@@ -1,5 +1,5 @@
 ---
-name: digest
+name: wiki-digest
 description: 处理收件箱中的新文章，抓取全文、生成知识卡片、归档原文、更新索引
 trigger: 用户发送文章链接，或用户说"处理文章"、"digest"、"收录"
 ---
