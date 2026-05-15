@@ -55,6 +55,17 @@ if [ "$CHECK_RESULT" = "ALL CLEAR" ]; then
     echo "[$(date "+%Y-%m-%d %H:%M:%S")] 粗筛通过，跳过 Claude（零 token 消耗）" >> "$LOG_FILE"
     echo "---" >> "$LOG_FILE"
 
+    # 记录运行时间戳（ALL CLEAR 也要记录，否则 cron-check 会反复触发）
+    LAST_RUNS="$LOG_DIR/last-runs.txt"
+    NOW_EPOCH=$(date "+%s")
+    if [ -f "$LAST_RUNS" ]; then
+        grep -v "^${TASK}=" "$LAST_RUNS" > "$LAST_RUNS.tmp" || true
+        echo "${TASK}=${NOW_EPOCH}" >> "$LAST_RUNS.tmp"
+        mv "$LAST_RUNS.tmp" "$LAST_RUNS"
+    else
+        echo "${TASK}=${NOW_EPOCH}" > "$LAST_RUNS"
+    fi
+
     # 直接通知
     osascript -e "display notification \"${TASK}: 一切正常\" with title \"AI Wiki\"" 2>/dev/null || true
     exit 0
