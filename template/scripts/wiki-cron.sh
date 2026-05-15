@@ -93,3 +93,14 @@ fi
 TIMESTAMP_END=$(date "+%Y-%m-%d %H:%M:%S")
 echo "[$TIMESTAMP_END] 执行完毕" >> "$LOG_FILE"
 echo "---" >> "$LOG_FILE"
+
+# 记录本次运行时间戳
+LAST_RUNS="$LOG_DIR/last-runs.txt"
+NOW_EPOCH=$(date "+%s")
+if [ -f "$LAST_RUNS" ]; then
+    grep -v "^${TASK}=" "$LAST_RUNS" > "$LAST_RUNS.tmp" || true
+    echo "${TASK}=${NOW_EPOCH}" >> "$LAST_RUNS.tmp"
+    mv "$LAST_RUNS.tmp" "$LAST_RUNS"
+else
+    echo "${TASK}=${NOW_EPOCH}" > "$LAST_RUNS"
+fi
