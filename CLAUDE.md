@@ -27,7 +27,8 @@
             ├── plan.md       # 研究计划（问题定义、已知/未知、搜索方向）
             ├── materials/    # 搜集的原始资料（网页抓取等）
             ├── notes.md      # 研究笔记（中间产出、信息缺口记录）
-            └── report.md     # 最终研究报告（结论、来源、未解决问题）
+            ├── report.md     # 最终研究报告（结论、来源、未解决问题）
+            └── follow-ups/   # 持续跟踪项（研究产出中需要跟进的部分）
 ```
 
 ## 文章处理流程
@@ -133,6 +134,12 @@ related: [[相关文章1]], [[相关文章2]]
    - **决策型**（时效性分析、个人建议）：报告保留在 analysis/，同时在 `decisions/` 创建决策记录
    - 不确定时，向用户建议并确认："这是时效性分析，建议保留在 analysis/ 不入库，可以吗？"
 
+7. **跟进（强制）**：研究完成后，AI 必须向用户确认跟进项
+   - 从报告中找出需要持续跟踪的发现（如数据变化、政策动态、业务指标等）
+   - 向用户确认："以下发现可能需要持续跟进：1. xxx 2. xxx，需要创建跟踪项吗？"
+   - 用户确认后，在 `follow-ups/` 下创建跟踪文件
+   - 同时在 `todos/active.md` 对应分类的「### 长期」下添加跟进待办
+
 ### plan.md 格式
 
 ```markdown
@@ -190,6 +197,27 @@ status: completed
 - [资料1](materials/001-xxx.md)
 - [资料2](materials/002-xxx.md)
 - 外部链接...
+```
+
+### follow-up 格式（follow-ups/）
+
+文件名：`{跟踪项简称}.md`
+
+```markdown
+---
+topic: 跟踪项名称
+parent: analysis/{课题名}
+cadence: daily | weekly | monthly
+status: active | closed
+created: YYYY-MM-DD
+---
+
+## 为什么要跟踪
+研究报告中的哪个发现触发了这个跟踪项。
+
+## 跟踪记录
+- **YYYY-MM-DD**: 初始状态——xxx，来源 [xxx](../materials/001.md)
+- **YYYY-MM-DD**: 更新——xxx
 ```
 
 ## 个人上下文（context/）
