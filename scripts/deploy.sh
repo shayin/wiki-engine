@@ -59,6 +59,14 @@ if [ -f "$ENGINE_DIR/CLAUDE.md" ]; then
     echo "    ✓ CLAUDE.md"
 fi
 
+# 复制脚本
+if [ -d "$ENGINE_DIR/template/scripts" ]; then
+    mkdir -p "$TARGET/scripts"
+    cp -r "$ENGINE_DIR/template/scripts/"* "$TARGET/scripts/"
+    chmod +x "$TARGET/scripts/"*.sh 2>/dev/null || true
+    echo "    ✓ scripts/"
+fi
+
 echo "==> 完成！"
 echo ""
 echo "下一步："
