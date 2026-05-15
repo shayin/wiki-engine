@@ -9,6 +9,7 @@
 | 文章收录 | 发链接 → `/wiki-digest` | 抓取文章、生成知识卡片、归档原文 |
 | 课题研究 | 说"研究 XX" → `/wiki-research` | 搜集资料、分析研究、输出报告 |
 | 决策复盘 | 说"复盘" → `/wiki-review` | 定期回顾决策，记录教训 |
+| 待办管理 | 说"加个待办" → `/wiki-todo` | 添加、完成、列表、归档待办 |
 | 知识问答 | 直接提问 | 基于知识库内容回答 |
 
 ## 快速开始
@@ -32,6 +33,9 @@ my-wiki/
 ├── raw/                # 原文归档（按月 YYYY-MM/，不可变）
 ├── context/            # 个人上下文（用户维护，AI 只读）
 ├── decisions/          # 决策日志（AI 写入，用户回看）
+├── todos/              # AI 待办管理
+│   ├── active.md       #   当前活跃待办（长期/工作/个人分区）
+│   └── archive/        #   按周归档（YYYY-WXX.md）
 ├── wiki/               # AI 维护的知识库
 │   ├── index.md        #   总索引
 │   ├── log.md          #   处理日志
@@ -120,6 +124,7 @@ crontab -e
 | `wiki-digest` | `skills/wiki-digest/` | 发链接、说"收录"/"处理" |
 | `wiki-research` | `skills/wiki-research/` | 说"研究"/"调研"/"了解" |
 | `wiki-review` | `skills/wiki-review/` | 说"复盘"/"回顾"，或 cron 触发 |
+| `wiki-todo` | `skills/wiki-todo/` | 说"加个待办"/"完成了"/"看看待办"/"归档本周" |
 
 ## 文件格式
 
@@ -179,6 +184,8 @@ context: analysis/xxx
 | `raw/` | AI | 原文归档 | 永久，不可变 |
 | `context/` | 用户 | 个人上下文 | 持续更新 |
 | `decisions/` | AI | 决策记录 | 永久 |
+| `todos/active.md` | AI | 当前待办 | 持续更新 |
+| `todos/archive/` | AI | 周归档 | 永久 |
 | `wiki/sources/` | AI | 知识卡片 | 永久 |
 | `wiki/topics/` | AI | 聚合主题 | 永久 |
 | `wiki/analysis/` | AI | 研究工作区 | 永久（过程记录） |
