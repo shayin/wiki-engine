@@ -85,8 +85,10 @@ decisions/xxx.md|决策标题|2026-05-01
    - 更新 frontmatter：`status: reviewed`，追加 `reviewed_date: YYYY-MM-DD`
 
 4. **追问**（可选）：
-   - 是否需要继续跟进？如需要，建议新的 review_date
-   - 复盘中是否有共性模式？
+   - 是否需要继续跟进？如需要，建议新的 review_date（默认 3 个月后）
+   - 如决策涉及持续变化的数据，建议创建 follow-up 跟踪项
+   - 复盘中是否有共性模式？是否需要更新 `context/` 中的个人偏好？
+   - 是否有关联的其他决策也值得一起复盘？
 
 ### 4. 复盘总结（仅交互模式）
 
