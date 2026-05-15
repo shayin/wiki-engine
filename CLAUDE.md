@@ -14,6 +14,9 @@
 │   └── ...             #   可按需扩展其他上下文文件
 ├── decisions/          # 决策日志（AI 写入，用户回看）
 │   └── YYYY-MM-DD-简短标识.md
+├── todos/              # AI 待办管理
+│   ├── active.md       #   当前活跃待办（工作/个人分区）
+│   └── archive/        #   按周归档（YYYY-WXX.md）
 └── wiki/               # AI 维护的知识库
     ├── index.md        # 总索引（AI 入口点，每次操作先读此文件）
     ├── log.md          # 处理日志（只追加）
