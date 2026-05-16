@@ -28,7 +28,7 @@ WIKI_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$WIKI_DIR"
 
 # 日志目录
-LOG_DIR="$WIKI_DIR/wiki/.cron-logs"
+LOG_DIR="$WIKI_DIR/wiki/.cron/logs"
 mkdir -p "$LOG_DIR"
 
 TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
@@ -145,5 +145,5 @@ else
 fi
 
 # 写入 pending 通知（供 AI 下次对话时读取）
-PENDING_FILE="$LOG_DIR/pending.md"
+PENDING_FILE="$WIKI_DIR/wiki/.cron/pending.md"
 echo "- [$TS] $NOTIFY_SUMMARY" >> "$PENDING_FILE"

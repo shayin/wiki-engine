@@ -27,9 +27,15 @@
 ### 1. 部署
 
 ```bash
+git clone https://github.com/shayin/wiki-engine.git
 cd wiki-engine
-./scripts/deploy.sh --target ~/my-wiki
-cp -r skills/* ~/.claude/skills/
+
+# 一键安装（创建目录 + 安装 skills + 配置 crontab）
+./install.sh ~/my-wiki --with-cron
+
+# 或分步安装
+./install.sh ~/my-wiki           # 只安装目录和 skills
+./install.sh ~/my-wiki --with-cron  # 后续再加 crontab
 ```
 
 部署后的目录结构：
@@ -49,7 +55,10 @@ my-wiki/
 │   ├── sources/        #   文章摘要卡片
 │   ├── topics/         #   跨文章聚合主题
 │   ├── analysis/       #   课题研究工作区（含 follow-ups/）
-│   └── .cron-logs/     #   定时任务日志
+│   └── .cron/            #   定时任务（配置 + 日志 + 通知）
+│       ├── config.sh     #     用户配置（Bark key 等，不入库）
+│       ├── logs/         #     按日日志
+│       └── pending.md    #     通知队列
 ├── scripts/            # 定时任务脚本
 ├── CLAUDE.md           # 治理文件（AI 入口）
 └── skills/             # CC Skills 源码（wiki-engine 仓库内）
@@ -255,7 +264,7 @@ created: YYYY-MM-DD
 定时任务在无人值守时运行，通过 **pending.md 通知邮箱** 将结果传递给用户：
 
 ```
-cron 任务执行 → 发现问题 → 写入 wiki/.cron-logs/pending.md
+cron 任务执行 → 发现问题 → 写入 wiki/.cron/pending.md
                                     ↓
 用户打开 CC 对话 → CLAUDE.md 注入规则 → 检查 pending.md
                                     ↓

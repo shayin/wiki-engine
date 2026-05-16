@@ -14,7 +14,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WIKI_DIR="$(dirname "$SCRIPT_DIR")"
-LOG_DIR="$WIKI_DIR/wiki/.cron-logs"
+LOG_DIR="$WIKI_DIR/wiki/.cron/logs"
 LAST_RUNS="$LOG_DIR/last-runs.txt"
 LOCK_FILE="$LOG_DIR/.check.lock"
 

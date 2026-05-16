@@ -1,0 +1,8 @@
+# Wiki Cron 配置
+# 复制为 config.sh 并修改
+
+# Bark 推送（填你的 Bark key，留空则不推送手机通知）
+# 获取方式：App Store 下载 Bark，打开后复制 key
+BARK_KEY=""
+BARK_GROUP="Wiki"
+BARK_SERVER="https://api.day.app"

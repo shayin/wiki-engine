@@ -13,7 +13,7 @@ cd "$WIKI_DIR"
 source "$SCRIPT_DIR/bark-push.sh" 2>/dev/null || true
 
 ACTIVE="todos/active.md"
-PENDING="wiki/.cron-logs/pending.md"
+PENDING="wiki/.cron/pending.md"
 TS=$(date "+%Y-%m-%d %H:%M")
 
 if [ ! -f "$ACTIVE" ]; then

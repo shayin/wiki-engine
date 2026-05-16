@@ -296,14 +296,14 @@ AI 自动打标签，不预定义。常见维度：
 
 ## 定时任务通知（pending.md 邮箱）
 
-`wiki/.cron-logs/pending.md` 是定时任务的通知邮箱。cron 任务在无人值守时发现问题，写入此文件；AI 在每次对话时检查并提醒用户。
+`wiki/.cron/pending.md` 是定时任务的通知邮箱。cron 任务在无人值守时发现问题，写入此文件；AI 在每次对话时检查并提醒用户。
 
 ### 通知流程
 
 ```
-cron 执行 → 发现问题 → 写入 pending.md
+cron 执行 → 发现问题 → 写入 wiki/.cron/pending.md
                             ↓
-用户对话 → AI 检查 pending.md → 有内容 → 回复末尾附上提醒
+用户对话 → AI 检查 wiki/.cron/pending.md → 有内容 → 回复末尾附上提醒
                             ↓
 用户确认"知道了" → 清空 pending.md
 ```
@@ -311,7 +311,7 @@ cron 执行 → 发现问题 → 写入 pending.md
 ### AI 行为规则
 
 **每次回复用户时**：
-1. 检查 `wiki/.cron-logs/pending.md` 是否存在且非空
+1. 检查 `wiki/.cron/pending.md` 是否存在且非空
 2. 有内容 → 在回复末尾用分隔线附上提醒
 3. 用户确认已知晓后，清空该文件
 4. 不存在或为空 → 不输出任何提醒
