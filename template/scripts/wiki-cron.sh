@@ -80,7 +80,7 @@ PROMPT="/$TASK
 粗筛已发现以下问题（请基于这些结果直接分析，不要再全量扫描）：
 ${CHECK_RESULT}"
 
-OUTPUT=$(claude -p "$PROMPT" 2>&1) || true
+OUTPUT=$(claude -p "$PROMPT" 2>&1 | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' | LC_ALL=C sed 's/[^\x20-\x7E\xA0-\xFF]//g') || true
 
 # 将完整输出写入日志
 echo "$OUTPUT" >> "$LOG_FILE"
