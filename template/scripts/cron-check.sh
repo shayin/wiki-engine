@@ -29,6 +29,8 @@ touch "$LOCK_FILE"
 trap 'rm -f "$LOCK_FILE"' EXIT
 
 NOW_EPOCH=$(date "+%s")
+LOG_FILE="$LOG_DIR/$(date "+%Y-%m-%d").log"
+TS=$(date "+%Y-%m-%d %H:%M:%S")
 
 # --- 工具函数：读 last-run ---
 get_last_run() {
@@ -59,8 +61,10 @@ SWEEP_DUE=$(to_epoch "${LAST_SUNDAY} 23:15")
 
 # 条件：调度时间已过 AND 上次运行早于调度时间
 if [ "$SWEEP_DUE" -gt 0 ] && [ "$NOW_EPOCH" -ge "$SWEEP_DUE" ] && [ "$SWEEP_LAST" -lt "$SWEEP_DUE" ]; then
-    echo "[$(date "+%Y-%m-%d %H:%M:%S")] 补跑 wiki-sweep" >> "$LOG_DIR/$(date "+%Y-%m-%d").log"
+    echo "[$TS] 补跑 wiki-sweep" >> "$LOG_FILE"
     cd "$WIKI_DIR" && ./scripts/wiki-cron.sh wiki-sweep || true
+else
+    echo "[$TS] sweep: 跳过（下次调度：周日 23:15）" >> "$LOG_FILE"
 fi
 
 # ============================================================
@@ -87,6 +91,8 @@ fi
 REVIEW_DUE=$(to_epoch "${REVIEW_DATE} 23:15")
 
 if [ "$REVIEW_DUE" -gt 0 ] && [ "$NOW_EPOCH" -ge "$REVIEW_DUE" ] && [ "$REVIEW_LAST" -lt "$REVIEW_DUE" ]; then
-    echo "[$(date "+%Y-%m-%d %H:%M:%S")] 补跑 wiki-review" >> "$LOG_DIR/$(date "+%Y-%m-%d").log"
+    echo "[$TS] 补跑 wiki-review" >> "$LOG_FILE"
     cd "$WIKI_DIR" && ./scripts/wiki-cron.sh wiki-review || true
+else
+    echo "[$TS] review: 跳过（下次调度：${REVIEW_DATE} 23:15）" >> "$LOG_FILE"
 fi
