@@ -149,6 +149,32 @@ if [ "$WITH_CRON" = true ]; then
     fi
 fi
 
+# ── 8. 注册 WIKI_ROOT 环境变量 ──
+echo "==> 注册环境变量..."
+SHELL_RC=""
+if [ -n "$ZSH_VERSION" ]; then
+    SHELL_RC="$HOME/.zshrc"
+elif [ -n "$BASH_VERSION" ]; then
+    SHELL_RC="$HOME/.bashrc"
+else
+    SHELL_RC="$HOME/.profile"
+fi
+
+# 移除旧的 WIKI_ROOT 配置（如有）
+if [ -f "$SHELL_RC" ]; then
+    sed -i.bak '/# wiki-engine$/,/WIKI_ROOT/d' "$SHELL_RC" 2>/dev/null || true
+    rm -f "$SHELL_RC.bak"
+fi
+
+# 追加新的配置
+cat >> "$SHELL_RC" << ENVCODE
+
+# wiki-engine
+export WIKI_ROOT="$TARGET"
+ENVCODE
+
+echo "    ✓ WIKI_ROOT=$TARGET → $SHELL_RC"
+
 # ── 完成 ──
 echo ""
 echo "═══════════════════════════════════"
@@ -156,6 +182,7 @@ echo "  安装完成！"
 echo "═══════════════════════════════════"
 echo ""
 echo "  目录: $TARGET"
+echo "  环境变量: WIKI_ROOT=$TARGET"
 echo ""
 echo "  下一步:"
 echo ""
