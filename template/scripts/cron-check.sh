@@ -125,3 +125,28 @@ if [ "$DIGEST_DUE" -gt 0 ] && [ "$NOW_EPOCH" -ge "$DIGEST_DUE" ] && [ "$DIGEST_L
 else
     echo "[$TS] digest: 跳过（下次调度：今天 23:00）" >> "$LOG_FILE"
 fi
+
+# ============================================================
+# todo-remind: 每天 11:00 和 23:00
+# ============================================================
+HOUR=$(date "+%H")
+if [ "$HOUR" -ge 11 ] && [ "$HOUR" -lt 12 ]; then
+    TODO_KEY="todo-morning"
+elif [ "$HOUR" -ge 23 ]; then
+    TODO_KEY="todo-evening"
+else
+    TODO_KEY=""
+fi
+
+if [ -n "$TODO_KEY" ]; then
+    TODO_LAST=$(get_last_run "$TODO_KEY")
+    [ -z "$TODO_LAST" ] && TODO_LAST=0
+    TODO_DUE=$(to_epoch "${TODAY} ${HOUR}:00")
+    if [ "$TODO_LAST" -lt "$TODO_DUE" ]; then
+        echo "[$TS] 执行待办提醒" >> "$LOG_FILE"
+        "$SCRIPT_DIR/todo-remind.sh" || true
+        echo "${TODO_KEY}=$(date "+%s")" >> "$LAST_RUNS"
+    else
+        echo "[$TS] todo-remind: 今日已提醒，跳过" >> "$LOG_FILE"
+    fi
+fi
