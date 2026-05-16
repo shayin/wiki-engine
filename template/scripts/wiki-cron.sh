@@ -1,33 +1,49 @@
 #!/bin/bash
 #
-# wiki-cron.sh — 定时任务 wrapper（两阶段模式）
-# 阶段1: shell 粗筛（零 token）
-# 阶段2: Claude 精析（仅粗筛发现问题时触发）
+# wiki-cron.sh — 定时任务 wrapper
+#
+# 模式:
+#   默认（AI 模式）: 直接调用 Claude，完整分析
+#   --coarse（粗筛模式）: shell 先筛，有问题才调 Claude
 #
 # 用法:
-#   ./scripts/wiki-cron.sh <skill-name>
+#   ./scripts/wiki-cron.sh <skill-name> [--coarse]
 #
 # 示例:
-#   ./scripts/wiki-cron.sh wiki-sweep
-#   ./scripts/wiki-cron.sh wiki-review
+#   ./scripts/wiki-cron.sh wiki-sweep           # AI 模式
+#   ./scripts/wiki-cron.sh wiki-sweep --coarse   # 粗筛模式
+#   ./scripts/wiki-cron.sh wiki-digest           # digest 始终走粗筛（inbox 空时零 token）
 #
 
 set -e
 
-TASK="${1:-}"
+TASK=""
+USE_COARSE=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --coarse) USE_COARSE=true; shift ;;
+        wiki-*|*)  TASK="$1"; shift ;;
+    esac
+done
 
 if [ -z "$TASK" ]; then
-    echo "用法: $0 <skill-name>"
+    echo "用法: $0 <skill-name> [--coarse]"
     echo "  可用: wiki-sweep, wiki-review, wiki-digest"
+    echo "  --coarse: 先 shell 粗筛，有问题才调 Claude（默认直接调 Claude）"
     exit 1
 fi
 
-# 确定工作目录（脚本所在目录的上一级 = wiki 根目录）
+# digest 始终走粗筛（inbox 经常为空，省 token 有意义）
+if [ "$TASK" = "wiki-digest" ]; then
+    USE_COARSE=true
+fi
+
+# 确定工作目录
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WIKI_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$WIKI_DIR"
 
-# 日志目录
 LOG_DIR="$WIKI_DIR/wiki/.cron/logs"
 mkdir -p "$LOG_DIR"
 
@@ -46,9 +62,64 @@ case "$TASK" in
     *)            TASK_LABEL="$TASK" ;;
 esac
 
-echo "[$TIMESTAMP] 开始执行 /$TASK（阶段1: 粗筛）" >> "$LOG_FILE"
+# 记录运行时间戳（函数，多处调用）
+record_run() {
+    local runs="$LOG_DIR/last-runs.txt"
+    local now=$(date "+%s")
+    if [ -f "$runs" ]; then
+        grep -v "^${TASK}=" "$runs" > "$runs.tmp" || true
+        echo "${TASK}=${now}" >> "$runs.tmp"
+        mv "$runs.tmp" "$runs"
+    else
+        echo "${TASK}=${now}" > "$runs"
+    fi
+}
 
-# ---- 阶段1: Shell 粗筛 ----
+# ================================================================
+# AI 模式：直接调 Claude
+# ================================================================
+if [ "$USE_COARSE" = false ]; then
+    echo "[$TIMESTAMP] 开始执行 /$TASK（AI 模式）" >> "$LOG_FILE"
+
+    PROMPT="/$TASK
+
+由定时任务自动触发（cron 模式）。请执行完整的 skill 流程，不需要用户确认。"
+    OUTPUT=$(claude -p "$PROMPT" 2>&1 | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' | LC_ALL=C sed 's/[^\x20-\x7E\xA0-\xFF]//g') || true
+
+    echo "$OUTPUT" >> "$LOG_FILE"
+    echo "" >> "$LOG_FILE"
+
+    # 解析 NOTIFY
+    NOTIFY_SUMMARY=""
+    while IFS= read -r line; do
+        if [[ "$line" == NOTIFY:* ]]; then
+            NOTIFY_SUMMARY="${line#NOTIFY: }"
+        fi
+    done <<< "$OUTPUT"
+
+    # 推送通知
+    if [ -n "$NOTIFY_SUMMARY" ]; then
+        bark_push "📚 知识库·${TASK_LABEL}" "$NOTIFY_SUMMARY"
+        osascript -e "display notification \"${NOTIFY_SUMMARY}\" with title \"📚 知识库·${TASK_LABEL}\"" 2>/dev/null || true
+        # 写入 pending
+        PENDING_FILE="$WIKI_DIR/wiki/.cron/pending.md"
+        echo "- [$(date "+%Y-%m-%d %H:%M")] $NOTIFY_SUMMARY" >> "$PENDING_FILE"
+    else
+        bark_push "📚 知识库·${TASK_LABEL}" "已处理，查看日志"
+        osascript -e "display notification \"已处理\" with title \"📚 知识库·${TASK_LABEL}\"" 2>/dev/null || true
+    fi
+
+    echo "[$(date "+%Y-%m-%d %H:%M:%S")] 执行完毕（AI 模式）" >> "$LOG_FILE"
+    echo "---" >> "$LOG_FILE"
+    record_run
+    exit 0
+fi
+
+# ================================================================
+# 粗筛模式：shell 先筛，有问题才调 Claude
+# ================================================================
+echo "[$TIMESTAMP] 开始执行 /$TASK（粗筛模式）" >> "$LOG_FILE"
+
 CHECK_SCRIPT=""
 case "$TASK" in
     wiki-sweep)   CHECK_SCRIPT="$SCRIPT_DIR/sweep-check.sh" ;;
@@ -63,33 +134,18 @@ fi
 
 echo "$CHECK_RESULT" >> "$LOG_FILE"
 
-# 根据粗筛结果决定是否调用 Claude
 if [ "$CHECK_RESULT" = "ALL CLEAR" ]; then
-    echo "[$(date "+%Y-%m-%d %H:%M:%S")] 粗筛通过，跳过 Claude（零 token 消耗）" >> "$LOG_FILE"
+    echo "[$(date "+%Y-%m-%d %H:%M:%S")] 粗筛通过，跳过 Claude（零 token）" >> "$LOG_FILE"
     echo "---" >> "$LOG_FILE"
-
-    # 记录运行时间戳（ALL CLEAR 也要记录，否则 cron-check 会反复触发）
-    LAST_RUNS="$LOG_DIR/last-runs.txt"
-    NOW_EPOCH=$(date "+%s")
-    if [ -f "$LAST_RUNS" ]; then
-        grep -v "^${TASK}=" "$LAST_RUNS" > "$LAST_RUNS.tmp" || true
-        echo "${TASK}=${NOW_EPOCH}" >> "$LAST_RUNS.tmp"
-        mv "$LAST_RUNS.tmp" "$LAST_RUNS"
-    else
-        echo "${TASK}=${NOW_EPOCH}" > "$LAST_RUNS"
-    fi
-
-    # ALL CLEAR 不推送到手机，只在 macOS 通知中心轻提示
+    record_run
     osascript -e "display notification \"${TASK_LABEL}: 一切正常\" with title \"AI Wiki\"" 2>/dev/null || true
     exit 0
 fi
 
-# ---- 阶段2: Claude 处理 ----
-echo "[$(date "+%Y-%m-%d %H:%M:%S")] 需要处理，启动 Claude" >> "$LOG_FILE"
+# 粗筛发现问题，调 Claude
+echo "[$(date "+%Y-%m-%d %H:%M:%S")] 粗筛发现问题，启动 Claude" >> "$LOG_FILE"
 
-# 构造 prompt
 if [ "$TASK" = "wiki-digest" ]; then
-    # digest：逐个处理 inbox 中的待处理文件
     INBOX_FILES=$(echo "$CHECK_RESULT" | grep "^inbox/" || true)
     PROMPT="/$TASK
 
@@ -98,7 +154,6 @@ ${INBOX_FILES}
 
 请逐个处理这些文章，对每篇执行完整的 digest 流程。"
 else
-    # sweep/review：基于粗筛结果分析
     PROMPT="/$TASK
 
 粗筛已发现以下问题（请基于这些结果直接分析，不要再全量扫描）：
@@ -107,43 +162,26 @@ fi
 
 OUTPUT=$(claude -p "$PROMPT" 2>&1 | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' | LC_ALL=C sed 's/[^\x20-\x7E\xA0-\xFF]//g') || true
 
-# 将完整输出写入日志
 echo "$OUTPUT" >> "$LOG_FILE"
 echo "" >> "$LOG_FILE"
 
-# 解析 NOTIFY: 标记行
 NOTIFY_SUMMARY=""
 while IFS= read -r line; do
     if [[ "$line" == NOTIFY:* ]]; then
-        msg="${line#NOTIFY: }"
-        NOTIFY_SUMMARY="$msg"
+        NOTIFY_SUMMARY="${line#NOTIFY: }"
     fi
 done <<< "$OUTPUT"
 
-# Bark 手机推送 + macOS 通知
 if [ -n "$NOTIFY_SUMMARY" ]; then
     bark_push "📚 知识库·${TASK_LABEL}" "$NOTIFY_SUMMARY"
     osascript -e "display notification \"${NOTIFY_SUMMARY}\" with title \"📚 知识库·${TASK_LABEL}\"" 2>/dev/null || true
+    PENDING_FILE="$WIKI_DIR/wiki/.cron/pending.md"
+    echo "- [$(date "+%Y-%m-%d %H:%M")] $NOTIFY_SUMMARY" >> "$PENDING_FILE"
 else
-    bark_push "📚 知识库·${TASK_LABEL}" "已处理，查看日志了解详情"
+    bark_push "📚 知识库·${TASK_LABEL}" "已处理，查看日志"
     osascript -e "display notification \"已处理\" with title \"📚 知识库·${TASK_LABEL}\"" 2>/dev/null || true
 fi
 
-TIMESTAMP_END=$(date "+%Y-%m-%d %H:%M:%S")
-echo "[$TIMESTAMP_END] 执行完毕" >> "$LOG_FILE"
+echo "[$(date "+%Y-%m-%d %H:%M:%S")] 执行完毕（粗筛模式）" >> "$LOG_FILE"
 echo "---" >> "$LOG_FILE"
-
-# 记录本次运行时间戳
-LAST_RUNS="$LOG_DIR/last-runs.txt"
-NOW_EPOCH=$(date "+%s")
-if [ -f "$LAST_RUNS" ]; then
-    grep -v "^${TASK}=" "$LAST_RUNS" > "$LAST_RUNS.tmp" || true
-    echo "${TASK}=${NOW_EPOCH}" >> "$LAST_RUNS.tmp"
-    mv "$LAST_RUNS.tmp" "$LAST_RUNS"
-else
-    echo "${TASK}=${NOW_EPOCH}" > "$LAST_RUNS"
-fi
-
-# 写入 pending 通知（供 AI 下次对话时读取）
-PENDING_FILE="$WIKI_DIR/wiki/.cron/pending.md"
-echo "- [$TS] $NOTIFY_SUMMARY" >> "$PENDING_FILE"
+record_run
