@@ -6,7 +6,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-WIKI_DIR="$(dirname "$SCRIPT_DIR")"
+CRON_DIR="$(dirname "$SCRIPT_DIR")"
+WIKI_DIR="$(dirname "$CRON_DIR")"
 cd "$WIKI_DIR"
 
 if [ ! -d "inbox" ]; then

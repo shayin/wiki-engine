@@ -6,14 +6,15 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-WIKI_DIR="$(dirname "$SCRIPT_DIR")"
+CRON_DIR="$(dirname "$SCRIPT_DIR")"
+WIKI_DIR="$(dirname "$CRON_DIR")"
 cd "$WIKI_DIR"
 
 # 加载 Bark 推送工具
 source "$SCRIPT_DIR/bark-push.sh" 2>/dev/null || true
 
 ACTIVE="todos/active.md"
-PENDING="wiki/.cron/pending.md"
+PENDING=".cron/pending.md"
 TS=$(date "+%Y-%m-%d %H:%M")
 
 if [ ! -f "$ACTIVE" ]; then

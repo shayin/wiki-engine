@@ -64,8 +64,7 @@ echo ""
 echo "==> 创建目录结构..."
 mkdir -p "$TARGET"/{inbox,raw,context,decisions,todos}
 mkdir -p "$TARGET"/wiki/{sources,topics,analysis}
-mkdir -p "$TARGET"/wiki/.cron/logs
-mkdir -p "$TARGET"/scripts
+mkdir -p "$TARGET"/.cron/{logs,scripts}
 echo "    ✓ 目录结构创建完成"
 
 # ── 2. 复制模板文件 ──
@@ -82,9 +81,9 @@ if [ -d "$SCRIPT_DIR/template" ]; then
 fi
 
 # ── 3. 复制脚本 ──
-if [ -d "$SCRIPT_DIR/template/scripts" ]; then
-    cp "$SCRIPT_DIR/template/scripts/"*.sh "$TARGET/scripts/"
-    chmod +x "$TARGET/scripts/"*.sh 2>/dev/null || true
+if [ -d "$SCRIPT_DIR/template/.cron/scripts" ]; then
+    cp "$SCRIPT_DIR/template/.cron/scripts/"*.sh "$TARGET/.cron/scripts/"
+    chmod +x "$TARGET/.cron/scripts/"*.sh 2>/dev/null || true
     echo "    ✓ 定时任务脚本"
 fi
 
@@ -95,11 +94,11 @@ if [ -f "$SCRIPT_DIR/CLAUDE.md" ]; then
 fi
 
 # ── 5. 生成 cron 配置 ──
-if [ ! -f "$TARGET/wiki/.cron/config.sh" ]; then
-    if [ -f "$SCRIPT_DIR/template/wiki/.cron/config.sh.example" ]; then
-        cp "$SCRIPT_DIR/template/wiki/.cron/config.sh.example" "$TARGET/wiki/.cron/config.sh"
+if [ ! -f "$TARGET/.cron/config.sh" ]; then
+    if [ -f "$SCRIPT_DIR/template/.cron/config.sh.example" ]; then
+        cp "$SCRIPT_DIR/template/.cron/config.sh.example" "$TARGET/.cron/config.sh"
     else
-        cat > "$TARGET/wiki/.cron/config.sh" << 'CONF'
+        cat > "$TARGET/.cron/config.sh" << 'CONF'
 # Wiki Cron 配置
 
 # Bark 推送（填你的 Bark key，留空则不推送手机通知）
@@ -108,7 +107,7 @@ BARK_GROUP="Wiki"
 BARK_SERVER="https://api.day.app"
 CONF
     fi
-    echo "    ✓ cron 配置（wiki/.cron/config.sh）"
+    echo "    ✓ cron 配置（.cron/config.sh）"
 else
     echo "    ✓ cron 配置（已存在，跳过）"
 fi
@@ -137,7 +136,7 @@ fi
 
 # ── 7. 配置 crontab ──
 if [ "$WITH_CRON" = true ]; then
-    CRON_LINE="* * * * * cd \"$TARGET\" && ./scripts/cron-check.sh"
+    CRON_LINE="* * * * * cd \"$TARGET\" && .cron/scripts/cron-check.sh"
 
     # 检查是否已配置
     if crontab -l 2>/dev/null | grep -q "cron-check.sh"; then
@@ -161,7 +160,7 @@ echo ""
 echo "  下一步:"
 echo ""
 echo "  1. 配置 Bark 推送（可选）:"
-echo "     vim $TARGET/wiki/.cron/config.sh"
+echo "     vim $TARGET/.cron/config.sh"
 echo "     # 填入 BARK_KEY"
 echo ""
 echo "  2. 配置个人上下文（可选）:"

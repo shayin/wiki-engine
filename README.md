@@ -49,17 +49,17 @@ my-wiki/
 ├── todos/              # AI 待办管理
 │   ├── active.md       #   待办 + 跟踪项（按课题分组）
 │   └── archive/        #   按周归档（YYYY-WXX.md）
+├── .cron/              # 定时任务（配置 + 日志 + 脚本）
+│   ├── config.sh       #   用户配置（Bark key 等，不入库）
+│   ├── pending.md      #   通知队列
+│   ├── logs/           #   按日日志
+│   └── scripts/        #   定时任务脚本
 ├── wiki/               # AI 维护的知识库
 │   ├── index.md        #   总索引
 │   ├── log.md          #   处理日志
 │   ├── sources/        #   文章摘要卡片
 │   ├── topics/         #   跨文章聚合主题
-│   ├── analysis/       #   课题研究工作区（含 follow-ups/）
-│   └── .cron/            #   定时任务（配置 + 日志 + 通知）
-│       ├── config.sh     #     用户配置（Bark key 等，不入库）
-│       ├── logs/         #     按日日志
-│       └── pending.md    #     通知队列
-├── scripts/            # 定时任务脚本
+│   └── analysis/       #   课题研究工作区（含 follow-ups/）
 ├── CLAUDE.md           # 治理文件（AI 入口）
 └── skills/             # CC Skills 源码（wiki-engine 仓库内）
 ```
@@ -83,12 +83,12 @@ EOF
 ```bash
 # 添加到 crontab（每分钟检查一次）
 crontab -e
-# * * * * * cd /path/to/my-wiki && ./scripts/cron-check.sh
+# * * * * * cd /path/to/my-wiki && .cron/scripts/cron-check.sh
 ```
 
 ### 4. 配置调度时间（可选）
 
-编辑 `wiki/.cron/config.sh`，所有调度时间均可自定义：
+编辑 `.cron/config.sh`，所有调度时间均可自定义：
 
 ```bash
 # digest: 每天处理 inbox 的时间
@@ -110,7 +110,7 @@ BARK_KEY=""
 
 ## 自动化任务
 
-所有定时任务由 `cron-check.sh` 统一调度（每分钟检查，按时间触发），支持合盖/断网后自动补跑。调度时间在 `wiki/.cron/config.sh` 中配置：
+所有定时任务由 `cron-check.sh` 统一调度（每分钟检查，按时间触发），支持合盖/断网后自动补跑。调度时间在 `.cron/config.sh` 中配置：
 
 | 任务 | 默认调度时间 | 做什么 | token 消耗 |
 |------|------------|--------|-----------|
@@ -292,7 +292,7 @@ created: YYYY-MM-DD
 定时任务在无人值守时运行，通过 **pending.md 通知邮箱** 将结果传递给用户：
 
 ```
-cron 任务执行 → 发现问题 → 写入 wiki/.cron/pending.md
+cron 任务执行 → 发现问题 → 写入 .cron/pending.md
                                     ↓
 用户打开 CC 对话 → CLAUDE.md 注入规则 → 检查 pending.md
                                     ↓

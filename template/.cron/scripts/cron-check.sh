@@ -13,8 +13,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-WIKI_DIR="$(dirname "$SCRIPT_DIR")"
-CRON_DIR="$WIKI_DIR/wiki/.cron"
+CRON_DIR="$(dirname "$SCRIPT_DIR")"
+WIKI_DIR="$(dirname "$CRON_DIR")"
 LOG_DIR="$CRON_DIR/logs"
 LAST_RUNS="$LOG_DIR/last-runs.txt"
 LOCK_FILE="$LOG_DIR/.check.lock"
@@ -33,6 +33,7 @@ fi
 : "${SWEEP_TIME:=23:15}"
 : "${REVIEW_TIME:=23:15}"
 : "${TODO_TIMES:=11:00,23:00}"
+TODAY=$(date "+%Y-%m-%d")
 
 # 防并发：如果上一次 check 还在跑（<10 分钟），跳过
 if [ -f "$LOCK_FILE" ]; then
@@ -83,13 +84,13 @@ SWEEP_DUE=$(to_epoch "${LAST_TARGET_DAY} ${SWEEP_TIME}")
 
 if [ "$SWEEP_DUE" -gt 0 ] && [ "$NOW_EPOCH" -ge "$SWEEP_DUE" ] && [ "$SWEEP_LAST" -lt "$SWEEP_DUE" ]; then
     echo "[$TS] 补跑 wiki-sweep" >> "$LOG_FILE"
-    cd "$WIKI_DIR" && ./scripts/wiki-cron.sh wiki-sweep || true
+    "$SCRIPT_DIR/wiki-cron.sh" wiki-sweep || true
 else
     echo "[$TS] sweep: 跳过（下次调度：${SWEEP_DAY} ${SWEEP_TIME}）" >> "$LOG_FILE"
 fi
 
 # ============================================================
-# wiki-review: 每天 TIME
+# wiki-review: 每天 REVIEW_TIME
 # ============================================================
 REVIEW_LAST=$(get_last_run "wiki-review")
 [ -z "$REVIEW_LAST" ] && REVIEW_LAST=0
@@ -98,7 +99,7 @@ REVIEW_DUE=$(to_epoch "${TODAY} ${REVIEW_TIME}")
 
 if [ "$REVIEW_DUE" -gt 0 ] && [ "$NOW_EPOCH" -ge "$REVIEW_DUE" ] && [ "$REVIEW_LAST" -lt "$REVIEW_DUE" ]; then
     echo "[$TS] 补跑 wiki-review" >> "$LOG_FILE"
-    cd "$WIKI_DIR" && ./scripts/wiki-cron.sh wiki-review || true
+    "$SCRIPT_DIR/wiki-cron.sh" wiki-review || true
 else
     echo "[$TS] review: 跳过（下次调度：今天 ${REVIEW_TIME}）" >> "$LOG_FILE"
 fi
@@ -109,7 +110,6 @@ fi
 DIGEST_LAST=$(get_last_run "wiki-digest")
 [ -z "$DIGEST_LAST" ] && DIGEST_LAST=0
 
-TODAY=$(date "+%Y-%m-%d")
 DIGEST_DUE=$(to_epoch "${TODAY} ${DIGEST_TIME}")
 
 if [ "$DIGEST_DUE" -gt 0 ] && [ "$NOW_EPOCH" -ge "$DIGEST_DUE" ] && [ "$DIGEST_LAST" -lt "$DIGEST_DUE" ]; then
@@ -121,10 +121,10 @@ if [ "$DIGEST_DUE" -gt 0 ] && [ "$NOW_EPOCH" -ge "$DIGEST_DUE" ] && [ "$DIGEST_L
     fi
     if [ "$INBOX_COUNT" -gt 0 ]; then
         echo "[$TS] 补跑 wiki-digest（inbox 有 ${INBOX_COUNT} 篇）" >> "$LOG_FILE"
-        cd "$WIKI_DIR" && ./scripts/wiki-cron.sh wiki-digest || true
+        "$SCRIPT_DIR/wiki-cron.sh" wiki-digest || true
     else
         echo "[$TS] digest: inbox 空，跳过" >> "$LOG_FILE"
-        echo "wiki-digest=$(date "+%s")" >> "$LAST_RUNS"
+        echo "wiki-digest=$(date "+%s")  # $(date "+%Y-%m-%d %H:%M")" >> "$LAST_RUNS"
     fi
 else
     echo "[$TS] digest: 跳过（下次调度：今天 ${DIGEST_TIME}）" >> "$LOG_FILE"
@@ -154,7 +154,7 @@ if [ -n "$TODO_KEY" ]; then
     if [ "$TODO_LAST" -lt "$TODO_DUE" ]; then
         echo "[$TS] 执行待办提醒" >> "$LOG_FILE"
         "$SCRIPT_DIR/todo-remind.sh" || true
-        echo "${TODO_KEY}=$(date "+%s")" >> "$LAST_RUNS"
+        echo "${TODO_KEY}=$(date "+%s")  # $(date "+%Y-%m-%d %H:%M")" >> "$LAST_RUNS"
     else
         echo "[$TS] todo-remind: 今日已提醒，跳过" >> "$LOG_FILE"
     fi

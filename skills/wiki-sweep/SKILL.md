@@ -188,7 +188,7 @@ NOTIFY: sweep 完成：发现 X 个跟进项 + Y 个维护项
 - 粗筛脚本：`scripts/sweep-check.sh`（cron 模式下由 wiki-cron.sh 调用，输出粗筛结果）
 - 决策记录格式：参见 `CLAUDE.md` 中「决策记录格式」
 - follow-up 格式：参见 `CLAUDE.md` 中「follow-up 格式」
-- cron 调度：`wiki/.cron/config.sh` 中的 SWEEP_DAY/SWEEP_TIME 配置
+- cron 调度：`.cron/config.sh` 中的 SWEEP_DAY/SWEEP_TIME 配置
 
 ## 路径约定
 

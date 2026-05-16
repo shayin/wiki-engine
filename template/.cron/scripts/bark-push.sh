@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # bark-push.sh — Bark 手机推送工具
-# 从 wiki/.cron/config.sh 读取配置
+# 从 .cron/config.sh 读取配置
 #
 # 用法:
 #   source bark-push.sh
@@ -10,11 +10,15 @@
 
 # 定位配置文件（支持被其他脚本 source 后调用）
 _bark_find_config() {
-    # 尝试多种路径定位 wiki 根目录
+    # 尝试多种路径定位 config.sh
     local dir
-    for dir in "$WIKI_DIR" "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" "$(pwd)"; do
-        if [ -f "$dir/wiki/.cron/config.sh" ]; then
-            echo "$dir/wiki/.cron/config.sh"
+    for dir in "$CRON_DIR" "$WIKI_DIR" "$(dirname "${BASH_SOURCE[0]}")/.." "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" "$(pwd)"; do
+        if [ -f "$dir/.cron/config.sh" ]; then
+            echo "$dir/.cron/config.sh"
+            return
+        fi
+        if [ -f "$dir/config.sh" ]; then
+            echo "$dir/config.sh"
             return
         fi
     done

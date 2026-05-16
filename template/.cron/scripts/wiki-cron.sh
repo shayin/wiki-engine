@@ -7,12 +7,12 @@
 #   --coarse（粗筛模式）: shell 先筛，有问题才调 Claude
 #
 # 用法:
-#   ./scripts/wiki-cron.sh <skill-name> [--coarse]
+#   $SCRIPT_DIR/wiki-cron.sh <skill-name> [--coarse]
 #
 # 示例:
-#   ./scripts/wiki-cron.sh wiki-sweep           # AI 模式
-#   ./scripts/wiki-cron.sh wiki-sweep --coarse   # 粗筛模式
-#   ./scripts/wiki-cron.sh wiki-digest           # digest 始终走粗筛（inbox 空时零 token）
+#   wiki-cron.sh wiki-sweep           # AI 模式
+#   wiki-cron.sh wiki-sweep --coarse  # 粗筛模式
+#   wiki-cron.sh wiki-digest          # digest/review 始终走粗筛（空时零 token）
 #
 
 set -e
@@ -41,10 +41,11 @@ fi
 
 # 确定工作目录
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-WIKI_DIR="$(dirname "$SCRIPT_DIR")"
+CRON_DIR="$(dirname "$SCRIPT_DIR")"
+WIKI_DIR="$(dirname "$CRON_DIR")"
 cd "$WIKI_DIR"
 
-LOG_DIR="$WIKI_DIR/wiki/.cron/logs"
+LOG_DIR="$CRON_DIR/logs"
 mkdir -p "$LOG_DIR"
 
 TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
@@ -68,10 +69,10 @@ record_run() {
     local now=$(date "+%s")
     if [ -f "$runs" ]; then
         grep -v "^${TASK}=" "$runs" > "$runs.tmp" || true
-        echo "${TASK}=${now}" >> "$runs.tmp"
+        echo "${TASK}=${now}  # $(date "+%Y-%m-%d %H:%M")" >> "$runs.tmp"
         mv "$runs.tmp" "$runs"
     else
-        echo "${TASK}=${now}" > "$runs"
+        echo "${TASK}=${now}  # $(date "+%Y-%m-%d %H:%M")" > "$runs"
     fi
 }
 
@@ -102,7 +103,7 @@ if [ "$USE_COARSE" = false ]; then
         bark_push "📚 知识库·${TASK_LABEL}" "$NOTIFY_SUMMARY"
         osascript -e "display notification \"${NOTIFY_SUMMARY}\" with title \"📚 知识库·${TASK_LABEL}\"" 2>/dev/null || true
         # 写入 pending
-        PENDING_FILE="$WIKI_DIR/wiki/.cron/pending.md"
+        PENDING_FILE="$CRON_DIR/pending.md"
         echo "- [$(date "+%Y-%m-%d %H:%M")] $NOTIFY_SUMMARY" >> "$PENDING_FILE"
     else
         bark_push "📚 知识库·${TASK_LABEL}" "已处理，查看日志"
@@ -175,7 +176,7 @@ done <<< "$OUTPUT"
 if [ -n "$NOTIFY_SUMMARY" ]; then
     bark_push "📚 知识库·${TASK_LABEL}" "$NOTIFY_SUMMARY"
     osascript -e "display notification \"${NOTIFY_SUMMARY}\" with title \"📚 知识库·${TASK_LABEL}\"" 2>/dev/null || true
-    PENDING_FILE="$WIKI_DIR/wiki/.cron/pending.md"
+    PENDING_FILE="$CRON_DIR/pending.md"
     echo "- [$(date "+%Y-%m-%d %H:%M")] $NOTIFY_SUMMARY" >> "$PENDING_FILE"
 else
     bark_push "📚 知识库·${TASK_LABEL}" "已处理，查看日志"
