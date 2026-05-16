@@ -159,6 +159,13 @@ NOTIFY: digest 完成：处理了 N 篇文章（{标题列表}）
 
 交互模式（用户手动触发）也需要输出这行，不影响用户阅读。
 
+## 关联资源
+
+- 知识卡片格式：参见 `CLAUDE.md` 中「知识卡片格式」
+- 主题页面格式：参见 `CLAUDE.md` 中「主题页面格式」
+- 抓取工具：`mcp__web-reader__webReader`（主）、`mcp__web_reader__webReader`（备）
+- cron 调度：`wiki/.cron/config.sh` 中的 DIGEST_TIME 配置
+
 ## 路径约定
 
 所有路径基于当前工作目录（相对路径）。不使用配置文件，不向上查找。当前目录必须有 `inbox/`、`raw/`、`wiki/` 三个目录才算有效的 wiki 根目录。

@@ -189,6 +189,14 @@ status: completed
 - **课题目录已存在**：检查 plan.md status，active → 问是否继续；completed → 问是否重新研究
 - **信息严重不足**：诚实告知已获取信息和剩余缺口，由用户决定是否继续
 
+## 关联资源
+
+- 研究产出格式：参见 `CLAUDE.md` 中「plan.md 格式」「report.md 格式」「follow-up 格式」
+- 决策记录格式：参见 `CLAUDE.md` 中「决策记录格式」
+- 知识卡片格式：参见 `CLAUDE.md` 中「知识卡片格式」
+- 待办管理：`todos/active.md`（由 wiki-todo 管理，research 写入跟踪项）
+- 抓取工具：`mcp__web_reader__webReader`
+
 ## 路径约定
 
 所有路径基于当前工作目录（相对路径）。不使用配置文件，不向上查找。
