@@ -18,7 +18,7 @@ TASK="${1:-}"
 
 if [ -z "$TASK" ]; then
     echo "用法: $0 <skill-name>"
-    echo "  可用: wiki-sweep, wiki-review"
+    echo "  可用: wiki-sweep, wiki-review, wiki-digest"
     exit 1
 fi
 
@@ -39,8 +39,9 @@ echo "[$TIMESTAMP] 开始执行 /$TASK（阶段1: 粗筛）" >> "$LOG_FILE"
 # ---- 阶段1: Shell 粗筛 ----
 CHECK_SCRIPT=""
 case "$TASK" in
-    wiki-sweep)  CHECK_SCRIPT="$SCRIPT_DIR/sweep-check.sh" ;;
-    wiki-review) CHECK_SCRIPT="$SCRIPT_DIR/review-check.sh" ;;
+    wiki-sweep)   CHECK_SCRIPT="$SCRIPT_DIR/sweep-check.sh" ;;
+    wiki-review)  CHECK_SCRIPT="$SCRIPT_DIR/review-check.sh" ;;
+    wiki-digest)  CHECK_SCRIPT="$SCRIPT_DIR/inbox-check.sh" ;;
 esac
 
 CHECK_RESULT="ALL CLEAR"
@@ -71,14 +72,26 @@ if [ "$CHECK_RESULT" = "ALL CLEAR" ]; then
     exit 0
 fi
 
-# ---- 阶段2: Claude 精析 ----
-echo "[$(date "+%Y-%m-%d %H:%M:%S")] 粗筛发现问题，启动 Claude 精析" >> "$LOG_FILE"
+# ---- 阶段2: Claude 处理 ----
+echo "[$(date "+%Y-%m-%d %H:%M:%S")] 需要处理，启动 Claude" >> "$LOG_FILE"
 
-# 构造 prompt，附带粗筛结果
-PROMPT="/$TASK
+# 构造 prompt
+if [ "$TASK" = "wiki-digest" ]; then
+    # digest：逐个处理 inbox 中的待处理文件
+    INBOX_FILES=$(echo "$CHECK_RESULT" | grep "^inbox/" || true)
+    PROMPT="/$TASK
+
+inbox 中有 $(echo "$CHECK_RESULT" | grep "^PENDING_FILES" | cut -d'|' -f2) 篇待处理文章：
+${INBOX_FILES}
+
+请逐个处理这些文章，对每篇执行完整的 digest 流程。"
+else
+    # sweep/review：基于粗筛结果分析
+    PROMPT="/$TASK
 
 粗筛已发现以下问题（请基于这些结果直接分析，不要再全量扫描）：
 ${CHECK_RESULT}"
+fi
 
 OUTPUT=$(claude -p "$PROMPT" 2>&1 | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' | LC_ALL=C sed 's/[^\x20-\x7E\xA0-\xFF]//g') || true
 

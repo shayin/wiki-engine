@@ -96,3 +96,32 @@ if [ "$REVIEW_DUE" -gt 0 ] && [ "$NOW_EPOCH" -ge "$REVIEW_DUE" ] && [ "$REVIEW_L
 else
     echo "[$TS] review: 跳过（下次调度：${REVIEW_DATE} 23:15）" >> "$LOG_FILE"
 fi
+
+# ============================================================
+# wiki-digest: 每天 23:00（仅在 inbox 有文件时触发 Claude）
+# ============================================================
+DIGEST_LAST=$(get_last_run "wiki-digest")
+[ -z "$DIGEST_LAST" ] && DIGEST_LAST=0
+
+TODAY=$(date "+%Y-%m-%d")
+DIGEST_DUE=$(to_epoch "${TODAY} 23:00")
+
+if [ "$DIGEST_DUE" -gt 0 ] && [ "$NOW_EPOCH" -ge "$DIGEST_DUE" ] && [ "$DIGEST_LAST" -lt "$DIGEST_DUE" ]; then
+    # 先检查 inbox 是否有文件
+    INBOX_COUNT=0
+    if [ -d "$WIKI_DIR/inbox" ]; then
+        for f in "$WIKI_DIR"/inbox/*.md; do
+            [ -f "$f" ] && INBOX_COUNT=$((INBOX_COUNT + 1))
+        done
+    fi
+    if [ "$INBOX_COUNT" -gt 0 ]; then
+        echo "[$TS] 补跑 wiki-digest（inbox 有 ${INBOX_COUNT} 篇）" >> "$LOG_FILE"
+        cd "$WIKI_DIR" && ./scripts/wiki-cron.sh wiki-digest || true
+    else
+        # inbox 空，也要记录时间戳防止重复检查
+        echo "[$TS] digest: inbox 空，跳过" >> "$LOG_FILE"
+        echo "wiki-digest=$(date "+%s")" >> "$LAST_RUNS"
+    fi
+else
+    echo "[$TS] digest: 跳过（下次调度：今天 23:00）" >> "$LOG_FILE"
+fi
