@@ -48,23 +48,23 @@ to_epoch() {
 }
 
 # ============================================================
-# wiki-sweep: 每周日 23:15
+# wiki-sweep: 每周六 23:15
 # ============================================================
 SWEEP_LAST=$(get_last_run "wiki-sweep")
 [ -z "$SWEEP_LAST" ] && SWEEP_LAST=0
 
-# 计算最近一个周日的日期
-DOW=$(date "+%u")  # 1=Mon ... 7=Sun
-DAYS_BACK=$((DOW % 7))  # Sun=0, Mon=1, ..., Sat=6
-LAST_SUNDAY=$(date -v-${DAYS_BACK}d "+%Y-%m-%d")
-SWEEP_DUE=$(to_epoch "${LAST_SUNDAY} 23:15")
+# 计算最近一个周六的日期（DOW: 1=Mon ... 6=Sat, 7=Sun）
+DOW=$(date "+%u")
+DAYS_BACK=$(( (DOW - 6 + 7) % 7 ))  # Sat=0, Sun=1, Mon=2, ..., Fri=6
+LAST_SATURDAY=$(date -v-${DAYS_BACK}d "+%Y-%m-%d")
+SWEEP_DUE=$(to_epoch "${LAST_SATURDAY} 23:15")
 
 # 条件：调度时间已过 AND 上次运行早于调度时间
 if [ "$SWEEP_DUE" -gt 0 ] && [ "$NOW_EPOCH" -ge "$SWEEP_DUE" ] && [ "$SWEEP_LAST" -lt "$SWEEP_DUE" ]; then
     echo "[$TS] 补跑 wiki-sweep" >> "$LOG_FILE"
     cd "$WIKI_DIR" && ./scripts/wiki-cron.sh wiki-sweep || true
 else
-    echo "[$TS] sweep: 跳过（下次调度：周日 23:15）" >> "$LOG_FILE"
+    echo "[$TS] sweep: 跳过（下次调度：周六 23:15）" >> "$LOG_FILE"
 fi
 
 # ============================================================
