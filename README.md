@@ -207,7 +207,7 @@ cron-check.sh（每分钟，零 token）
 定时扫描 → 找到到期决策 → 展示当时的决策/理由/预期 → 用户回顾实际结果 → 记录教训
 ```
 
-### 知识问答
+### 知识问答（Q&A）
 
 ```
 用户提问 → 读取 wiki/index.md → 定位相关 sources/topics/analysis → 基于知识库回答
