@@ -19,8 +19,7 @@ DIGEST_TIME="23:00"
 SWEEP_DAY="Sat"
 SWEEP_TIME="23:15"
 
-# review: 决策复盘（每月几号 + 时间，逗号分隔）
-REVIEW_DAYS="1,15"
+# review: 决策复盘（每天扫描到期决策）
 REVIEW_TIME="23:15"
 
 # todo-remind: 待办提醒（多个时间逗号分隔）

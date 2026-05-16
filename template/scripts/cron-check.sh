@@ -31,7 +31,6 @@ fi
 : "${DIGEST_TIME:=23:00}"
 : "${SWEEP_DAY:=Sat}"
 : "${SWEEP_TIME:=23:15}"
-: "${REVIEW_DAYS:=1,15}"
 : "${REVIEW_TIME:=23:15}"
 : "${TODO_TIMES:=11:00,23:00}"
 
@@ -90,37 +89,18 @@ else
 fi
 
 # ============================================================
-# wiki-review: 每月指定号数 TIME
+# wiki-review: 每天 TIME
 # ============================================================
 REVIEW_LAST=$(get_last_run "wiki-review")
 [ -z "$REVIEW_LAST" ] && REVIEW_LAST=0
 
-DAY=$(date "+%d" | sed 's/^0//')
-MONTH=$(date "+%m")
-YEAR=$(date "+%Y")
-
-# 计算最近一个调度日期
-# REVIEW_DAYS="1,15" → 拆成数组
-FIRST_DAY=$(echo "$REVIEW_DAYS" | cut -d',' -f1)
-SECOND_DAY=$(echo "$REVIEW_DAYS" | cut -d',' -f2)
-
-if [ "$DAY" -ge "$SECOND_DAY" ]; then
-    REVIEW_DATE="${YEAR}-${MONTH}-$(printf '%02d' $SECOND_DAY)"
-elif [ "$DAY" -ge "$FIRST_DAY" ]; then
-    REVIEW_DATE="${YEAR}-${MONTH}-$(printf '%02d' $FIRST_DAY)"
-else
-    # 今天在第一个调度日之前，上一次调度是上个月的第二个日期
-    PREV=$(date -v-1m "+%Y-%m")
-    REVIEW_DATE="${PREV}-$(printf '%02d' $SECOND_DAY)"
-fi
-
-REVIEW_DUE=$(to_epoch "${REVIEW_DATE} ${REVIEW_TIME}")
+REVIEW_DUE=$(to_epoch "${TODAY} ${REVIEW_TIME}")
 
 if [ "$REVIEW_DUE" -gt 0 ] && [ "$NOW_EPOCH" -ge "$REVIEW_DUE" ] && [ "$REVIEW_LAST" -lt "$REVIEW_DUE" ]; then
     echo "[$TS] 补跑 wiki-review" >> "$LOG_FILE"
     cd "$WIKI_DIR" && ./scripts/wiki-cron.sh wiki-review || true
 else
-    echo "[$TS] review: 跳过（下次调度：${REVIEW_DATE} ${REVIEW_TIME}）" >> "$LOG_FILE"
+    echo "[$TS] review: 跳过（下次调度：今天 ${REVIEW_TIME}）" >> "$LOG_FILE"
 fi
 
 # ============================================================

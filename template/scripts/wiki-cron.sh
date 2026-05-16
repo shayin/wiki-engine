@@ -34,8 +34,8 @@ if [ -z "$TASK" ]; then
     exit 1
 fi
 
-# digest 始终走粗筛（inbox 经常为空，省 token 有意义）
-if [ "$TASK" = "wiki-digest" ]; then
+# digest 和 review 始终走粗筛（inbox 经常为空 / 大部分天无到期决策，省 token 有意义）
+if [ "$TASK" = "wiki-digest" ] || [ "$TASK" = "wiki-review" ]; then
     USE_COARSE=true
 fi
 
