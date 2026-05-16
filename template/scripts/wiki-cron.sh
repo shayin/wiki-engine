@@ -115,3 +115,7 @@ if [ -f "$LAST_RUNS" ]; then
 else
     echo "${TASK}=${NOW_EPOCH}" > "$LAST_RUNS"
 fi
+
+# 写入 pending 通知（供 AI 下次对话时读取）
+PENDING_FILE="$LOG_DIR/pending.md"
+echo "- [$TS] $NOTIFY_SUMMARY" >> "$PENDING_FILE"
