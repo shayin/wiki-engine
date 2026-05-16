@@ -339,4 +339,4 @@ cron 执行 → 发现问题 → 写入 .cron/pending.md
 | wiki-digest | 处理了 N 篇文章（标题列表） |
 | wiki-sweep | 发现的遗漏跟进项 |
 | wiki-review | 到期需要复盘的决策 |
-| todo-remind | 待办数统计 |
+| todo-remind | 待办数统计（早晚汇总）+ 定时提醒（带 remind 标记的待办） |

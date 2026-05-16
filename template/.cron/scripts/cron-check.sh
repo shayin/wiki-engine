@@ -33,7 +33,6 @@ fi
 : "${SWEEP_TIME:=23:15}"
 : "${REVIEW_TIME:=23:15}"
 : "${TODO_TIMES:=11:00,23:00}"
-TODAY=$(date "+%Y-%m-%d")
 
 # 防并发：如果上一次 check 还在跑（<10 分钟），跳过
 if [ -f "$LOCK_FILE" ]; then
@@ -90,7 +89,7 @@ else
 fi
 
 # ============================================================
-# wiki-review: 每天 REVIEW_TIME
+# wiki-review: 每天指定时间
 # ============================================================
 REVIEW_LAST=$(get_last_run "wiki-review")
 [ -z "$REVIEW_LAST" ] && REVIEW_LAST=0
@@ -110,6 +109,7 @@ fi
 DIGEST_LAST=$(get_last_run "wiki-digest")
 [ -z "$DIGEST_LAST" ] && DIGEST_LAST=0
 
+TODAY=$(date "+%Y-%m-%d")
 DIGEST_DUE=$(to_epoch "${TODAY} ${DIGEST_TIME}")
 
 if [ "$DIGEST_DUE" -gt 0 ] && [ "$NOW_EPOCH" -ge "$DIGEST_DUE" ] && [ "$DIGEST_LAST" -lt "$DIGEST_DUE" ]; then
@@ -153,9 +153,14 @@ if [ -n "$TODO_KEY" ]; then
     [ -z "$TODO_LAST" ] && TODO_LAST=0
     if [ "$TODO_LAST" -lt "$TODO_DUE" ]; then
         echo "[$TS] 执行待办提醒" >> "$LOG_FILE"
-        "$SCRIPT_DIR/todo-remind.sh" || true
+        "$SCRIPT_DIR/todo-remind.sh" --summary || true
         echo "${TODO_KEY}=$(date "+%s")  # $(date "+%Y-%m-%d %H:%M")" >> "$LAST_RUNS"
     else
         echo "[$TS] todo-remind: 今日已提醒，跳过" >> "$LOG_FILE"
     fi
 fi
+
+# ============================================================
+# todo-remind (per-minute): 每分钟检查带 remind 标记的待办
+# ============================================================
+"$SCRIPT_DIR/todo-remind.sh" || true
