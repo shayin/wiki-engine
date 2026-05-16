@@ -34,6 +34,18 @@ mkdir -p "$LOG_DIR"
 TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
 LOG_FILE="$LOG_DIR/$(date "+%Y-%m-%d").log"
 
+# 加载 Bark 推送工具
+source "$SCRIPT_DIR/bark-push.sh" 2>/dev/null || true
+
+# 任务中文映射
+TASK_LABEL=""
+case "$TASK" in
+    wiki-sweep)   TASK_LABEL="扫描" ;;
+    wiki-review)  TASK_LABEL="复盘" ;;
+    wiki-digest)  TASK_LABEL="入库" ;;
+    *)            TASK_LABEL="$TASK" ;;
+esac
+
 echo "[$TIMESTAMP] 开始执行 /$TASK（阶段1: 粗筛）" >> "$LOG_FILE"
 
 # ---- 阶段1: Shell 粗筛 ----
@@ -67,8 +79,8 @@ if [ "$CHECK_RESULT" = "ALL CLEAR" ]; then
         echo "${TASK}=${NOW_EPOCH}" > "$LAST_RUNS"
     fi
 
-    # 直接通知
-    osascript -e "display notification \"${TASK}: 一切正常\" with title \"AI Wiki\"" 2>/dev/null || true
+    # ALL CLEAR 不推送到手机，只在 macOS 通知中心轻提示
+    osascript -e "display notification \"${TASK_LABEL}: 一切正常\" with title \"AI Wiki\"" 2>/dev/null || true
     exit 0
 fi
 
@@ -105,13 +117,16 @@ while IFS= read -r line; do
     if [[ "$line" == NOTIFY:* ]]; then
         msg="${line#NOTIFY: }"
         NOTIFY_SUMMARY="$msg"
-        osascript -e "display notification \"$msg\" with title \"AI Wiki\" subtitle \"$TASK\"" 2>/dev/null || true
     fi
 done <<< "$OUTPUT"
 
-# 如果没有 NOTIFY: 行，发一个默认通知
-if [ -z "$NOTIFY_SUMMARY" ]; then
-    osascript -e "display notification \"${TASK}: 发现问题，已处理\" with title \"AI Wiki\"" 2>/dev/null || true
+# Bark 手机推送 + macOS 通知
+if [ -n "$NOTIFY_SUMMARY" ]; then
+    bark_push "📚 知识库·${TASK_LABEL}" "$NOTIFY_SUMMARY"
+    osascript -e "display notification \"${NOTIFY_SUMMARY}\" with title \"📚 知识库·${TASK_LABEL}\"" 2>/dev/null || true
+else
+    bark_push "📚 知识库·${TASK_LABEL}" "已处理，查看日志了解详情"
+    osascript -e "display notification \"已处理\" with title \"📚 知识库·${TASK_LABEL}\"" 2>/dev/null || true
 fi
 
 TIMESTAMP_END=$(date "+%Y-%m-%d %H:%M:%S")

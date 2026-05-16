@@ -9,6 +9,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WIKI_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$WIKI_DIR"
 
+# 加载 Bark 推送工具
+source "$SCRIPT_DIR/bark-push.sh" 2>/dev/null || true
+
 ACTIVE="todos/active.md"
 PENDING="wiki/.cron-logs/pending.md"
 TS=$(date "+%Y-%m-%d %H:%M")
@@ -37,3 +40,6 @@ if [ "$TRACKING_COUNT" -gt 0 ]; then
 fi
 
 echo "- [$TS] $MSG" >> "$PENDING"
+
+# Bark 手机推送
+bark_push "📚 知识库·待办" "$MSG"
