@@ -45,8 +45,8 @@ if [ -d "wiki/analysis" ]; then
     THIRTY_DAYS_AGO=$(date -v-30d "+%Y-%m-%d" 2>/dev/null || date -d "30 days ago" "+%Y-%m-%d")
     while IFS= read -r f; do
         [ -z "$f" ] && continue
-        status=$(grep "^status:" "$f" 2>/dev/null | awk '{print $2}')
-        if [ "$status" = "active" ]; then
+        item_status=$(grep "^status:" "$f" 2>/dev/null | awk '{print $2}')
+        if [ "$item_status" = "active" ]; then
             # 从 tracking_records 中取最后日期
             last_date=$(grep -E "^- 20[0-9]{2}-" "$f" 2>/dev/null | tail -1 | grep -oE "20[0-9]{2}-[0-9]{2}-[0-9]{2}" || true)
             if [ -n "$last_date" ] && [[ "$last_date" < "$THIRTY_DAYS_AGO" ]]; then
@@ -135,7 +135,6 @@ fi
 # --- Check 6: 断链检查 ---
 # 提取所有 [[]] 链接，检查目标文件是否存在
 if [ -d "wiki" ]; then
-    declare -A broken_links
     while IFS= read -r ref; do
         [ -z "$ref" ] && continue
         # ref 格式: 源文件|链接目标
@@ -155,13 +154,9 @@ if [ -d "wiki" ]; then
         done
 
         if [ "$found" = "no" ]; then
-            key="${src_file}|${link_target}"
-            if [ -z "${broken_links[$key]}" ]; then
-                broken_links["$key"]=1
-                src_title=$(head -20 "$src_file" | grep "^title:" | sed 's/title: *//' || basename "$src_file" .md)
-                ISSUES="${ISSUES}BROKEN_LINK|${src_file}|${src_title:-$(basename "$src_file" .md)}|${link_target}
+            src_title=$(head -20 "$src_file" | grep "^title:" | sed 's/title: *//' || basename "$src_file" .md)
+            ISSUES="${ISSUES}BROKEN_LINK|${src_file}|${src_title:-$(basename "$src_file" .md)}|${link_target}
 "
-            fi
         fi
     done < <(grep -roh '\[\[[^]]*\]\]' wiki/sources/ wiki/topics/ wiki/analysis/ 2>/dev/null | sed 's/\[\[//;s/\]\]//' | while read -r link; do
         # 找到包含此链接的源文件
