@@ -70,16 +70,22 @@ day_to_dow() {
 }
 
 # ============================================================
-# wiki-sweep: 每周指定日 TIME
+# wiki-sweep: 每天或每周指定日 TIME
 # ============================================================
 SWEEP_LAST=$(get_last_run "wiki-sweep")
 [ -z "$SWEEP_LAST" ] && SWEEP_LAST=0
 
-TARGET_DOW=$(day_to_dow "$SWEEP_DAY")
-CURRENT_DOW=$(date "+%u")
-DAYS_BACK=$(( (CURRENT_DOW - TARGET_DOW + 7) % 7 ))
-LAST_TARGET_DAY=$(date -v-${DAYS_BACK}d "+%Y-%m-%d")
-SWEEP_DUE=$(to_epoch "${LAST_TARGET_DAY} ${SWEEP_TIME}")
+if [ "$SWEEP_DAY" = "Daily" ]; then
+    # 每天模式：和 review 一样的逻辑
+    SWEEP_DUE=$(to_epoch "${TODAY} ${SWEEP_TIME}")
+else
+    # 每周模式：计算最近的目标星期几
+    TARGET_DOW=$(day_to_dow "$SWEEP_DAY")
+    CURRENT_DOW=$(date "+%u")
+    DAYS_BACK=$(( (CURRENT_DOW - TARGET_DOW + 7) % 7 ))
+    LAST_TARGET_DAY=$(date -v-${DAYS_BACK}d "+%Y-%m-%d")
+    SWEEP_DUE=$(to_epoch "${LAST_TARGET_DAY} ${SWEEP_TIME}")
+fi
 
 if [ "$SWEEP_DUE" -gt 0 ] && [ "$NOW_EPOCH" -ge "$SWEEP_DUE" ] && [ "$SWEEP_LAST" -lt "$SWEEP_DUE" ]; then
     echo "[$TS] 补跑 wiki-sweep" >> "$LOG_FILE"

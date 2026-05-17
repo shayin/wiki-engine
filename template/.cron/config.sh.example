@@ -21,9 +21,9 @@ WECHAT_PUSH_SERVER="http://43.163.223.4:6022"
 # digest: 每天处理 inbox 的时间（24小时制）
 DIGEST_TIME="23:00"
 
-# sweep: 知识库健康度扫描（星期 + 时间）
-# 星期: Mon Tue Wed Thu Fri Sat Sun
-SWEEP_DAY="Sat"
+# sweep: 知识库健康度扫描（Daily = 每天，或指定星期几）
+# 星期: Daily Mon Tue Wed Thu Fri Sat Sun
+SWEEP_DAY="Daily"
 SWEEP_TIME="23:15"
 
 # review: 决策复盘（每天扫描到期决策）
