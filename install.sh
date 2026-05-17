@@ -10,7 +10,7 @@
 #   1. 创建目录结构
 #   2. 复制模板和脚本
 #   3. 安装 skills 到 ~/.claude/skills/
-#   4. 生成 cron 配置（Bark key）
+#   4. 生成 cron 配置（Bark key + 微信推送）
 #   5. 可选：配置 crontab
 #
 
@@ -95,18 +95,51 @@ fi
 
 # ── 5. 生成 cron 配置 ──
 if [ ! -f "$TARGET/.cron/config.sh" ]; then
-    if [ -f "$SCRIPT_DIR/template/.cron/config.sh.example" ]; then
-        cp "$SCRIPT_DIR/template/.cron/config.sh.example" "$TARGET/.cron/config.sh"
-    else
-        cat > "$TARGET/.cron/config.sh" << 'CONF'
+    echo ""
+    echo "==> 配置推送（留空跳过）"
+    echo ""
+
+    # Bark 推送
+    read -p "  Bark Key（App Store 下载 Bark 获取，留空跳过）: " INPUT_BARK_KEY
+    read -p "  Bark Group（默认 Wiki）: " INPUT_BARK_GROUP
+    INPUT_BARK_GROUP="${INPUT_BARK_GROUP:-Wiki}"
+
+    # 微信推送
+    echo ""
+    read -p "  微信推送 ID（企业微信用户 ID，留空跳过）: " INPUT_WECHAT_ID
+    read -p "  微信推送 Key（推送服务认证密钥）: " INPUT_WECHAT_KEY
+
+    cat > "$TARGET/.cron/config.sh" << CONF
 # Wiki Cron 配置
 
-# Bark 推送（填你的 Bark key，留空则不推送手机通知）
-BARK_KEY=""
-BARK_GROUP="Wiki"
+# ---- 推送 ----
+
+# Bark 推送（留空则不推送手机通知）
+BARK_KEY="${INPUT_BARK_KEY}"
+BARK_GROUP="${INPUT_BARK_GROUP}"
 BARK_SERVER="https://api.day.app"
+
+# 微信推送（留空则不推送到微信）
+WECHAT_ID="${INPUT_WECHAT_ID}"
+WECHAT_PUSH_KEY="${INPUT_WECHAT_KEY}"
+WECHAT_PUSH_SERVER="http://43.163.223.4:6022"
+
+# ---- 调度时间 ----
+
+# digest: 每天处理 inbox 的时间（24小时制）
+DIGEST_TIME="23:00"
+
+# sweep: 知识库健康度扫描（星期 + 时间）
+SWEEP_DAY="Sat"
+SWEEP_TIME="23:15"
+
+# review: 决策复盘（每天扫描到期决策）
+REVIEW_TIME="23:15"
+
+# todo-remind: 待办提醒（多个时间逗号分隔）
+TODO_TIMES="11:00,23:00"
 CONF
-    fi
+    echo ""
     echo "    ✓ cron 配置（.cron/config.sh）"
 else
     echo "    ✓ cron 配置（已存在，跳过）"
@@ -186,9 +219,9 @@ echo "  环境变量: WIKI_ROOT=$TARGET"
 echo ""
 echo "  下一步:"
 echo ""
-echo "  1. 配置 Bark 推送（可选）:"
+echo "  1. 修改推送配置（可选）:"
 echo "     vim $TARGET/.cron/config.sh"
-echo "     # 填入 BARK_KEY"
+echo "     # 配置 BARK_KEY / WECHAT_ID / WECHAT_PUSH_KEY"
 echo ""
 echo "  2. 配置个人上下文（可选）:"
 echo "     vim $TARGET/context/finance.md"

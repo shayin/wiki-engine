@@ -50,7 +50,7 @@ my-wiki/
 │   ├── active.md       #   待办 + 跟踪项（按课题分组）
 │   └── archive/        #   按周归档（YYYY-WXX.md）
 ├── .cron/              # 定时任务（配置 + 日志 + 脚本）
-│   ├── config.sh       #   用户配置（Bark key 等，不入库）
+│   ├── config.sh       #   用户配置（Bark key、微信推送等，不入库）
 │   ├── pending.md      #   通知队列
 │   ├── logs/           #   按日日志
 │   └── scripts/        #   定时任务脚本
@@ -106,6 +106,13 @@ TODO_TIMES="11:00,23:00"
 
 # Bark 推送（留空则不推送手机通知）
 BARK_KEY=""
+BARK_GROUP="Wiki"
+BARK_SERVER="https://api.day.app"
+
+# 微信推送（留空则不推送到微信）
+WECHAT_ID=""
+WECHAT_PUSH_KEY=""
+WECHAT_PUSH_SERVER="http://43.163.223.4:6022"
 ```
 
 ## 自动化任务
@@ -184,6 +191,22 @@ cron-check.sh（每分钟，零 token）
   - `remind:HH:MM` — 每天提醒
   - `remind:DAY HH:MM` — 每周指定日提醒
   - `remind:M/D HH:MM` — 指定日期提醒一次
+
+### 闹钟（Alarm）
+
+闹钟与待办分开管理（在 `## 闹钟` 区），不需要完成，到点推送就完事。
+
+```
+说"设个闹钟"、"提醒我XX" → 写入 ## 闹钟区 → 到点推送
+说"有哪些闹钟" → 显示所有闹钟
+```
+
+- 根据语义自动判断一次性或循环（"每天/每周X" → 循环，其余 → 一次性）
+- 一次性闹钟触发后自动删除
+- 支持格式：
+  - `alarm:HH:MM` — 每天响
+  - `alarm:DAY HH:MM` — 每周指定日响
+  - `alarm:M/D HH:MM` — 指定日期响一次（响后自动删除）
 
 ### 遗漏扫描（Sweep）
 
@@ -295,7 +318,18 @@ created: YYYY-MM-DD
 
 ## 通知机制
 
-定时任务在无人值守时运行，通过 **pending.md 通知邮箱** 将结果传递给用户：
+定时任务在无人值守时运行，通过 **pending.md 通知邮箱** 将结果传递给用户，同时支持 **Bark 手机推送** 和 **微信推送**：
+
+### 推送渠道
+
+| 渠道 | 说明 | 配置项 |
+|------|------|--------|
+| **Bark** | iOS 推送通知 | `BARK_KEY` |
+| **微信** | 企业微信消息推送 | `WECHAT_ID` + `WECHAT_PUSH_KEY` |
+
+两个渠道独立配置，可以同时启用，也可以只用其中一个。推送内容一致，格式为"标题: 正文"。
+
+### 通知流程
 
 ```
 cron 任务执行 → 发现问题 → 写入 .cron/pending.md

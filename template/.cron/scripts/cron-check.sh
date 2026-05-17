@@ -50,7 +50,7 @@ TS=$(date "+%Y-%m-%d %H:%M:%S")
 get_last_run() {
     local task="$1"
     if [ -f "$LAST_RUNS" ]; then
-        grep "^${task}=" "$LAST_RUNS" 2>/dev/null | tail -1 | cut -d= -f2 || echo "0"
+        grep "^${task}=" "$LAST_RUNS" 2>/dev/null | tail -1 | cut -d= -f2 | cut -d' ' -f1 || echo "0"
     else
         echo "0"
     fi

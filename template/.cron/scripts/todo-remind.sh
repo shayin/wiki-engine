@@ -1,15 +1,18 @@
 #!/bin/bash
 #
-# todo-remind.sh — 待办提醒
+# todo-remind.sh — 待办提醒 + 闹钟
 #
 # 模式:
 #   无参数（默认）: 每分钟检查 remind 条目，时间到了推送明细
 #   --summary:      早晚汇总模式，统计待办总数写入 pending.md
 #
-# remind 语法（写在待办条目末尾）:
+# remind 语法（待办和闹钟通用）:
 #   `remind:HH:MM`         — 每天该时间提醒
 #   `remind:DAY HH:MM`     — 每周指定日提醒（Mon/Tue/Wed/Thu/Fri/Sat/Sun）
 #   `remind:M/D HH:MM`     — 指定日期提醒一次
+#
+# 闹钟区（## 闹钟）的条目以 ⏰ 开头，使用相同的 remind 标记。
+# 一次性闹钟（M/D 格式）触发后自动从文件删除。
 #
 set -e
 
@@ -54,7 +57,7 @@ if [ "$1" = "--summary" ]; then
 fi
 
 # ================================================================
-# 默认模式：每分钟检查 remind 条目
+# 默认模式：每分钟检查 remind 条目（待办 + 闹钟统一处理）
 # ================================================================
 NOW_HHMM=$(date "+%H:%M")
 NOW_DOW=$(date "+%a")   # Mon Tue Wed ...
@@ -74,64 +77,100 @@ get_section() {
     ' "$ACTIVE"
 }
 
+# 匹配 remind 时间（通用函数，返回 true/false）
+match_remind_spec() {
+    local spec="$1"
+    if echo "$spec" | grep -qE '^[A-Z][a-z]{2} [0-9]{1,2}:[0-9]{2}$'; then
+        # DAY HH:MM（每周）
+        local spec_dow spec_hhmm
+        spec_dow=$(echo "$spec" | awk '{print $1}')
+        spec_hhmm=$(echo "$spec" | awk '{print $2}')
+        [ "$spec_dow" = "$NOW_DOW" ] && [ "$spec_hhmm" = "$NOW_HHMM" ] && return 0
+
+    elif echo "$spec" | grep -qE '^[0-9]{1,2}/[0-9]{1,2} [0-9]{1,2}:[0-9]{2}$'; then
+        # M/D HH:MM（指定日期）
+        local spec_md spec_hhmm
+        spec_md=$(echo "$spec" | awk '{print $1}')
+        spec_hhmm=$(echo "$spec" | awk '{print $2}')
+        [ "$spec_md" = "$NOW_MD" ] && [ "$spec_hhmm" = "$NOW_HHMM" ] && return 0
+
+    elif echo "$spec" | grep -qE '^[0-9]{1,2}:[0-9]{2}$'; then
+        # HH:MM（每天）
+        [ "$spec" = "$NOW_HHMM" ] && return 0
+    fi
+    return 1
+}
+
+# 预计算闹钟区范围
+ALARM_SECTION_START=$(grep -n "^## 闹钟" "$ACTIVE" | head -1 | cut -d: -f1 || true)
+
 REMIND_ITEMS=""
+ALARM_ITEMS=""
+DELETE_LINES=""
 
 line_num=0
 while IFS= read -r line; do
     line_num=$((line_num + 1))
 
-    # 只处理未完成的待办
-    echo "$line" | grep -q "^- \[ \]" || continue
-
-    # 检查是否有 remind 标记
-    REMIND_SPEC=$(echo "$line" | grep -oE 'remind:[^ `]+' | head -1 || true)
-    [ -z "$REMIND_SPEC" ] && continue
-
-    # 去掉 remind: 前缀
-    SPEC="${REMIND_SPEC#remind:}"
-
-    MATCH=false
-
-    if echo "$SPEC" | grep -qE '^[A-Z][a-z]{2} [0-9]{1,2}:[0-9]{2}$'; then
-        # remind:DAY HH:MM（每周）
-        SPEC_DOW=$(echo "$SPEC" | awk '{print $1}')
-        SPEC_HHMM=$(echo "$SPEC" | awk '{print $2}')
-        [ "$SPEC_DOW" = "$NOW_DOW" ] && [ "$SPEC_HHMM" = "$NOW_HHMM" ] && MATCH=true
-
-    elif echo "$SPEC" | grep -qE '^[0-9]{1,2}/[0-9]{1,2} [0-9]{1,2}:[0-9]{2}$'; then
-        # remind:M/D HH:MM（指定日期）
-        SPEC_MD=$(echo "$SPEC" | awk '{print $1}')
-        SPEC_HHMM=$(echo "$SPEC" | awk '{print $2}')
-        [ "$SPEC_MD" = "$NOW_MD" ] && [ "$SPEC_HHMM" = "$NOW_HHMM" ] && MATCH=true
-
-    elif echo "$SPEC" | grep -qE '^[0-9]{1,2}:[0-9]{2}$'; then
-        # remind:HH:MM（每天）
-        [ "$SPEC" = "$NOW_HHMM" ] && MATCH=true
+    # 匹配待办（- [ ]）或闹钟（- ⏰）
+    IS_ALARM=false
+    if echo "$line" | grep -q "^- \[ \]"; then
+        IS_ALARM=false
+    elif echo "$line" | grep -q "^- ⏰"; then
+        IS_ALARM=true
+    else
+        continue
     fi
 
+    # 提取 remind 标记
+    REMIND_SPECS=$(echo "$line" | grep -oE 'remind:[^`]+' | sed 's/^remind://g' || true)
+    [ -z "$REMIND_SPECS" ] && continue
+
+    # 逐个匹配 remind 时间
+    MATCH=false
+    while IFS= read -r SPEC; do
+        [ -z "$SPEC" ] && continue
+        if match_remind_spec "$SPEC"; then
+            MATCH=true
+            # 闹钟区的 M/D 格式 = 一次性，触发后删除
+            if [ "$IS_ALARM" = true ] && echo "$SPEC" | grep -qE '^[0-9]{1,2}/[0-9]{1,2}'; then
+                DELETE_LINES="${DELETE_LINES}${line_num}
+"
+            fi
+            break
+        fi
+    done <<< "$REMIND_SPECS"
+
     if [ "$MATCH" = true ]; then
-        # 检查是否已提醒过（防重复）
+        # 防重复
         ITEM_HASH=$(echo "$line" | md5 | cut -c1-8)
-        REMIND_ID="${REMIND_KEY}|${ITEM_HASH}"
+        ITEM_TYPE=$([ "$IS_ALARM" = true ] && echo "alarm" || echo "remind")
+        REMIND_ID="${REMIND_KEY}|${ITEM_TYPE}|${ITEM_HASH}"
         if [ -f "$REMIND_LOG" ] && grep -qF "$REMIND_ID" "$REMIND_LOG" 2>/dev/null; then
             continue
         fi
-        # 记录已提醒
         echo "$REMIND_ID" >> "$REMIND_LOG"
-        ITEM_TEXT=$(echo "$line" | sed 's/^- \[ \] *//' | sed 's/`remind:[^`]*`//' | sed 's/  */ /g' | sed 's/ *$//')
-        SECTION=$(get_section "$line_num")
-        SECTION=$(echo "$SECTION" | sed 's/^## //')
-        REMIND_ITEMS="${REMIND_ITEMS}- ${ITEM_TEXT}（${SECTION}）
+
+        # 提取描述文本
+        if [ "$IS_ALARM" = true ]; then
+            ITEM_TEXT=$(echo "$line" | sed 's/^- ⏰ *//' | sed 's/`remind:[^`]*`//g' | sed 's/  */ /g' | sed 's/ *$//')
+            ALARM_ITEMS="${ALARM_ITEMS}- ${ITEM_TEXT}
 "
+        else
+            ITEM_TEXT=$(echo "$line" | sed 's/^- \[ \] *//' | sed 's/`remind:[^`]*`//g' | sed 's/  */ /g' | sed 's/ *$//')
+            SECTION=$(get_section "$line_num")
+            SECTION=$(echo "$SECTION" | sed 's/^## //')
+            REMIND_ITEMS="${REMIND_ITEMS}- ${ITEM_TEXT}（${SECTION}）
+"
+        fi
     fi
 done < "$ACTIVE"
 
-# 输出提醒
+# 输出待办提醒
 if [ -n "$REMIND_ITEMS" ]; then
     TS=$(date "+%Y-%m-%d %H:%M")
     echo "- [$TS] ⏰ 待办提醒：${REMIND_ITEMS}" | head -5 >> "$PENDING"
 
-    # Bark 推送（取第一条）
     FIRST_ITEM=$(echo -e "$REMIND_ITEMS" | head -1 | sed 's/^- //')
     TOTAL=$(echo -e "$REMIND_ITEMS" | grep -c "^-" || true)
     PUSH_MSG="$FIRST_ITEM"
@@ -139,11 +178,28 @@ if [ -n "$REMIND_ITEMS" ]; then
     bark_push "⏰ 待办提醒" "$PUSH_MSG"
 fi
 
-# 清理过期的 remind 记录（保留最近 7 天）
+# 输出闹钟提醒
+if [ -n "$ALARM_ITEMS" ]; then
+    TS=$(date "+%Y-%m-%d %H:%M")
+    echo "- [$TS] 🔔 闹钟：${ALARM_ITEMS}" | head -5 >> "$PENDING"
+
+    FIRST_ITEM=$(echo -e "$ALARM_ITEMS" | head -1 | sed 's/^- //')
+    TOTAL=$(echo -e "$ALARM_ITEMS" | grep -c "^-" || true)
+    PUSH_MSG="$FIRST_ITEM"
+    [ "$TOTAL" -gt 1 ] && PUSH_MSG="${PUSH_MSG} 等 ${TOTAL} 项"
+    bark_push "🔔 闹钟" "$PUSH_MSG"
+fi
+
+# 删除已触发的一次性闹钟
+if [ -n "$DELETE_LINES" ]; then
+    for ln in $(echo "$DELETE_LINES" | sort -rn); do
+        sed -i.bak "${ln}d" "$ACTIVE" 2>/dev/null || true
+        rm -f "$ACTIVE.bak"
+    done
+fi
+
+# 清理过期的 remind 记录（只保留今天的）
 if [ -f "$REMIND_LOG" ]; then
-    SEVEN_DAYS_AGO=$(date -v-7d "+%Y-%m-%d" 2>/dev/null || date -d "7 days ago" "+%Y-%m-%d")
-    grep "^${SEVEN_DAYS_AGO}\|^${TODAY}\|$(date -v-1d '+%Y-%m-%d' 2>/dev/null)" "$REMIND_LOG" > "$REMIND_LOG.tmp" 2>/dev/null || true
-    # 更简单：只保留今天的
     grep "^${TODAY}" "$REMIND_LOG" > "$REMIND_LOG.tmp" 2>/dev/null || true
     mv "$REMIND_LOG.tmp" "$REMIND_LOG" 2>/dev/null || true
 fi

@@ -9,6 +9,13 @@ BARK_KEY=""
 BARK_GROUP="Wiki"
 BARK_SERVER="https://api.day.app"
 
+# 微信推送（留空则不推送到微信）
+# WECHAT_ID: 企业微信用户 ID（格式如 o9cq800CZjb8XStvFWGnLAhD7_s4@im.wechat）
+# WECHAT_PUSH_KEY: 推送服务认证密钥
+WECHAT_ID=""
+WECHAT_PUSH_KEY=""
+WECHAT_PUSH_SERVER="http://43.163.223.4:6022"
+
 # ---- 调度时间 ----
 
 # digest: 每天处理 inbox 的时间（24小时制）
