@@ -42,26 +42,49 @@ cd wiki-engine
 
 ```
 my-wiki/
-├── inbox/              # 待处理（文章入口）
-├── raw/                # 原文归档（按月 YYYY-MM/，不可变）
-├── context/            # 个人上下文（用户维护，AI 只读）
-├── decisions/          # 决策日志（AI 写入，用户回看）
-├── todos/              # AI 待办管理
-│   ├── active.md       #   待办 + 跟踪项（按课题分组）
-│   └── archive/        #   按周归档（YYYY-WXX.md）
-├── .cron/              # 定时任务（配置 + 日志 + 脚本）
-│   ├── config.sh       #   用户配置（Bark key、微信推送等，不入库）
-│   ├── pending.md      #   通知队列
-│   ├── logs/           #   按日日志
-│   └── scripts/        #   定时任务脚本
-├── wiki/               # AI 维护的知识库
-│   ├── index.md        #   总索引
-│   ├── log.md          #   处理日志
-│   ├── sources/        #   文章摘要卡片
-│   ├── topics/         #   跨文章聚合主题
-│   └── analysis/       #   课题研究工作区（含 follow-ups/）
-├── CLAUDE.md           # 治理文件（AI 入口）
-└── skills/             # CC Skills 源码（wiki-engine 仓库内）
+├── inbox/              # 待处理文章（发给 AI 链接后暂存于此，digest 处理后清空）
+├── raw/                # 原文归档（按月 YYYY-MM/，不可变，处理后从 inbox 移入）
+├── context/            # 个人上下文（用户自行维护，AI 研究时只读引用）
+│   └── finance.md      #   如：投资风险偏好、持仓、关注领域
+├── decisions/          # 决策日志（研究产出或用户口述后 AI 写入，定期复盘）
+│   └── YYYY-MM-DD-标题.md  #  每条决策：决定/理由/预期/复盘
+├── todos/              # 待办管理（AI 管理，支持 remind 定时提醒）
+│   ├── active.md       #   活跃待办 + 闹钟 + 跟踪项（按课题分组）
+│   └── archive/        #   按周归档（YYYY-WXX.md，含已完成和顺延项）
+├── .cron/              # 定时任务系统（每分钟检查，合盖断网后自动补跑）
+│   ├── config.sh       #   用户配置（推送密钥 + 调度时间，不入 Git）
+│   ├── pending.md      #   通知队列（定时任务写入，AI 对话时提醒用户）
+│   ├── sweep-issues.md #   sweep 扫描问题持久化清单（未解决则持续提醒）
+│   ├── logs/           #   执行日志（按日 YYYY-MM-DD.log）
+│   │   ├── last-runs.txt   #  各任务最后执行时间戳（用于补跑判断）
+│   │   └── reminded.txt    #  已推送提醒记录（防重复推送）
+│   └── scripts/        #   定时任务脚本（由 cron-check.sh 统一调度）
+│       ├── cron-check.sh       # 入口：每分钟运行，按时间触发子任务
+│       ├── wiki-cron.sh        # AI 任务 wrapper（调 Claude 执行 skill）
+│       ├── bark-push.sh        # 推送工具（Bark + 微信，异步发送）
+│       ├── todo-remind.sh      # remind 匹配 + 闹钟检查 + 早晚汇总
+│       ├── inbox-check.sh      # digest 粗筛（检查 inbox 是否有文件）
+│       ├── sweep-check.sh      # sweep 粗筛（零 token 检查八维度）
+│       └── review-check.sh     # review 粗筛（检查到期决策）
+├── wiki/               # 知识库核心（AI 维护，用户以问代查）
+│   ├── index.md        #   总索引（AI 入口点，每次操作先读此文件）
+│   ├── log.md          #   处理日志（只追加，记录所有入库操作）
+│   ├── sources/        #   知识卡片（每篇文章一张，含摘要/要点/标签/关联）
+│   ├── topics/         #   主题页面（同标签 ≥3 篇自动聚合，跨文章总结）
+│   └── analysis/       #   课题研究工作区（每课题一个子目录）
+│       └── {课题名}/
+│           ├── plan.md       # 研究计划（问题定义、已知/未知、搜索方向）
+│           ├── materials/    # 搜集的原始资料
+│           ├── notes.md      # 研究笔记（中间产出、信息缺口）
+│           ├── report.md     # 研究报告（结论、来源、未解决问题）
+│           └── follow-ups/   # 持续跟踪项（需定期更新的发现）
+├── CLAUDE.md           # 治理文件（AI 行为规则，定义所有流程和格式）
+└── wiki-engine/        # 引擎源码（Git 仓库，含 skills/模板/安装脚本）
+    ├── install.sh      #   一键安装（创建目录 + 安装 skills + 配置 cron）
+    ├── skills/         #   CC Skills 源码（安装到 ~/.claude/skills/）
+    ├── template/       #   目录和文件模板（安装时复制到目标目录）
+    ├── config/         #   配置文档
+    └── scripts/        #   工具脚本
 ```
 
 ### 2. 配置个人上下文（可选）
