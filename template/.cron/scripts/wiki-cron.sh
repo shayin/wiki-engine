@@ -7,12 +7,12 @@
 #   --coarse（粗筛模式）: shell 先筛，有问题才调 Claude
 #
 # 用法:
-#   $SCRIPT_DIR/wiki-cron.sh <skill-name> [--coarse]
+#   wiki-cron.sh <skill-name> [--coarse]
 #
 # 示例:
 #   wiki-cron.sh wiki-sweep           # AI 模式
-#   wiki-cron.sh wiki-sweep --coarse  # 粗筛模式
-#   wiki-cron.sh wiki-digest          # digest/review 始终走粗筛（空时零 token）
+#   wiki-cron.sh wiki-sweep --coarse   # 粗筛模式
+#   wiki-cron.sh wiki-digest           # digest 始终走粗筛（inbox 空时零 token）
 #
 
 set -e
@@ -85,7 +85,7 @@ if [ "$USE_COARSE" = false ]; then
     PROMPT="/$TASK
 
 由定时任务自动触发（cron 模式）。请执行完整的 skill 流程，不需要用户确认。"
-    OUTPUT=$(claude -p "$PROMPT" 2>&1 | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' | LC_ALL=C sed 's/[^\x20-\x7E\xA0-\xFF]//g') || true
+    OUTPUT=$(claude -p "$PROMPT" 2>&1 | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g') || true
 
     echo "$OUTPUT" >> "$LOG_FILE"
     echo "" >> "$LOG_FILE"
@@ -161,7 +161,7 @@ else
 ${CHECK_RESULT}"
 fi
 
-OUTPUT=$(claude -p "$PROMPT" 2>&1 | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' | LC_ALL=C sed 's/[^\x20-\x7E\xA0-\xFF]//g') || true
+OUTPUT=$(claude -p "$PROMPT" 2>&1 | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g') || true
 
 echo "$OUTPUT" >> "$LOG_FILE"
 echo "" >> "$LOG_FILE"
