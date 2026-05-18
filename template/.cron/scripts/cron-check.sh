@@ -146,8 +146,10 @@ TODO_KEY=""
 for t in $(echo "$TODO_TIMES" | tr ',' ' '); do
     t_hour=$(echo "$t" | cut -d':' -f1 | sed 's/^0//')
     t_min=$(echo "$t" | cut -d':' -f2)
-    # 当前小时匹配调度小时，且没超过 60 分钟
-    if [ "$HOUR" -ge "$t_hour" ] && [ "$(( HOUR * 60 + MINUTE ))" -lt "$(( t_hour * 60 + 60 ))" ]; then
+    # 当前时间在调度时间之后，且不超过 60 分钟窗口
+    now_min=$(( 10#$HOUR * 60 + 10#$MINUTE ))
+    due_min=$(( t_hour * 60 + t_min ))
+    if [ "$now_min" -ge "$due_min" ] && [ "$now_min" -lt "$(( due_min + 60 ))" ]; then
         TODO_KEY="todo-${t_hour}${t_min}"
         TODO_DUE=$(to_epoch "${TODAY} ${t}")
         break
