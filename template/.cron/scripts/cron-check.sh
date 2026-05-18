@@ -43,7 +43,8 @@ touch "$LOCK_FILE"
 trap 'rm -f "$LOCK_FILE"' EXIT
 
 NOW_EPOCH=$(date "+%s")
-LOG_FILE="$LOG_DIR/$(date "+%Y-%m-%d").log"
+TODAY=$(date "+%Y-%m-%d")
+LOG_FILE="$LOG_DIR/${TODAY}.log"
 TS=$(date "+%Y-%m-%d %H:%M:%S")
 
 # --- 工具函数 ---
@@ -115,7 +116,6 @@ fi
 DIGEST_LAST=$(get_last_run "wiki-digest")
 [ -z "$DIGEST_LAST" ] && DIGEST_LAST=0
 
-TODAY=$(date "+%Y-%m-%d")
 DIGEST_DUE=$(to_epoch "${TODAY} ${DIGEST_TIME}")
 
 if [ "$DIGEST_DUE" -gt 0 ] && [ "$NOW_EPOCH" -ge "$DIGEST_DUE" ] && [ "$DIGEST_LAST" -lt "$DIGEST_DUE" ]; then
