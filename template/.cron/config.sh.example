@@ -14,7 +14,7 @@ BARK_SERVER="https://api.day.app"
 # WECHAT_PUSH_KEY: 推送服务认证密钥
 WECHAT_ID=""
 WECHAT_PUSH_KEY=""
-WECHAT_PUSH_SERVER="http://43.163.223.4:6022"
+WECHAT_PUSH_SERVER=""
 
 # ---- 调度时间 ----
 

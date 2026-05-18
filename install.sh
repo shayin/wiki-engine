@@ -108,6 +108,7 @@ if [ ! -f "$TARGET/.cron/config.sh" ]; then
     echo ""
     read -p "  微信推送 ID（企业微信用户 ID，留空跳过）: " INPUT_WECHAT_ID
     read -p "  微信推送 Key（推送服务认证密钥）: " INPUT_WECHAT_KEY
+    read -p "  微信推送服务器地址（如 http://1.2.3.4:6022）: " INPUT_WECHAT_SERVER
 
     cat > "$TARGET/.cron/config.sh" << CONF
 # Wiki Cron 配置
@@ -122,7 +123,7 @@ BARK_SERVER="https://api.day.app"
 # 微信推送（留空则不推送到微信）
 WECHAT_ID="${INPUT_WECHAT_ID}"
 WECHAT_PUSH_KEY="${INPUT_WECHAT_KEY}"
-WECHAT_PUSH_SERVER="http://43.163.223.4:6022"
+WECHAT_PUSH_SERVER="${INPUT_WECHAT_SERVER}"
 
 # ---- 调度时间 ----
 

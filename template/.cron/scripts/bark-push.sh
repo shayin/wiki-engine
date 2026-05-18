@@ -35,7 +35,7 @@ fi
 : "${BARK_SERVER:=https://api.day.app}"
 : "${WECHAT_ID:=}"
 : "${WECHAT_PUSH_KEY:=}"
-: "${WECHAT_PUSH_SERVER:=http://43.163.223.4:6022}"
+: "${WECHAT_PUSH_SERVER:=}"
 
 # 微信推送
 _wechat_push() {
