@@ -166,6 +166,35 @@ if [ -d "wiki" ]; then
     done | sort -u | head -20)
 fi
 
+# --- Check 7: 待办分类预检 ---
+# 提取跟踪项子标题，检查工作/个人区是否有语义匹配的错放项
+# 粗筛只做关键词匹配，精筛由 Claude 做语义判断
+if [ -f "todos/active.md" ]; then
+    # 提取跟踪项子标题（### xxx），去掉括号内容
+    tracking_keywords=""
+    while IFS= read -r header; do
+        [ -z "$header" ] && continue
+        keyword=$(echo "$header" | sed 's/（.*//;s/(.*//' | sed 's/^ *//;s/ *$//')
+        tracking_keywords="${tracking_keywords}${keyword}|"
+    done < <(sed -n '/^## 跟踪项/,/^## /p' todos/active.md | grep "^### " | sed 's/^### //')
+
+    if [ -n "$tracking_keywords" ]; then
+        # 提取工作/个人区的待办（排除长期标题行和空行）
+        while IFS= read -r item; do
+            [ -z "$item" ] && continue
+            # 对每个跟踪关键词做模糊匹配
+            echo "$tracking_keywords" | tr '|' '\n' | while read -r kw; do
+                [ -z "$kw" ] && continue
+                if echo "$item" | grep -qi "$kw"; then
+                    desc=$(echo "$item" | sed 's/^- \[[ x]\] *//' | sed 's/ `[^`]*`//g')
+                    ISSUES="${ISSUES}TODO_MISPLACED|todos/active.md|${desc}|可能属于跟踪项：${kw}
+"
+                fi
+            done
+        done < <(sed -n '/^## 工作/,/^## 个人/p' todos/active.md | grep "^- \[" | head -20; sed -n '/^## 个人/,/^## 闹钟/p' todos/active.md | grep "^- \[" | head -20)
+    fi
+fi
+
 # --- 输出标签统计（供 Claude 分析标签碎片） ---
 if [ -d "wiki/sources" ]; then
     TAG_STATS=""
