@@ -195,6 +195,54 @@ if [ -f "todos/active.md" ]; then
     fi
 fi
 
+# --- Check 9: 跨课题关联预检 ---
+# 检查是否有多个课题共享标签但无 connection 记录
+if [ -d "wiki/analysis" ] && [ -d "wiki/topics" ]; then
+    # 提取已有关联中涉及的课题
+    existing_connections=""
+    if [ -f "wiki/connections/index.md" ]; then
+        existing_connections=$(grep -oE '\[[^]]+\]' wiki/connections/index.md 2>/dev/null | tr -d '[]' | sort -u | tr '\n' '|' || true)
+    fi
+
+    # 提取各课题 report 的标签
+    topic_tags=""
+    while IFS= read -r report; do
+        [ -z "$report" ] && continue
+        topic_name=$(basename "$(dirname "$report")")
+        tags=$(awk '/^---$/,/^---$/' "$report" | grep "^topic:" | sed 's/topic: *//' | tr -d '"' || true)
+        if [ -n "$tags" ]; then
+            topic_tags="${topic_tags}${topic_name}|${tags}
+"
+        fi
+    done < <(find wiki/analysis -name "report.md" 2>/dev/null || true)
+
+    # 提取 topics 的标签
+    while IFS= read -r topic_file; do
+        [ -z "$topic_file" ] && continue
+        topic_name=$(basename "$topic_file" .md)
+        tags=$(awk '/^---$/,/^---$/' "$topic_file" | grep "^tags:" | sed 's/tags: *\[//;s/\]//' | tr ',' '\n' | sed 's/^ *//;s/ *$//' | head -3 | tr '\n' ',' | sed 's/,$//' || true)
+        if [ -n "$tags" ]; then
+            topic_tags="${topic_tags}${topic_name}|${tags}
+"
+        fi
+    done < <(find wiki/topics -name "*.md" 2>/dev/null || true)
+
+    # 简单检测：不同课题间有共同标签且无 connection 记录
+    if [ -n "$topic_tags" ]; then
+        echo "$topic_tags" | while IFS='|' read -r name tags; do
+            [ -z "$name" ] || [ -z "$tags" ] && continue
+            for tag in $(echo "$tags" | tr ',' ' '); do
+                [ -z "$tag" ] && continue
+                matches=$(echo "$topic_tags" | grep -v "^${name}|" | grep "$tag" | cut -d'|' -f1 | sort -u | tr '\n' ',' | sed 's/,$//')
+                if [ -n "$matches" ]; then
+                    ISSUES="${ISSUES}CROSS_TOPIC|${name}|${matches}|共享标签: ${tag}
+"
+                fi
+            done
+        done
+    fi
+fi
+
 # --- Check 8: 研究数据时效性预检 ---
 # 扫描 materials/ 中 frontmatter 的 data_as_of 字段，检查是否超过 6 个月
 if [ -d "wiki/analysis" ]; then
