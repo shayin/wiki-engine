@@ -195,6 +195,21 @@ if [ -f "todos/active.md" ]; then
     fi
 fi
 
+# --- Check 8: 研究数据时效性预检 ---
+# 扫描 materials/ 中 frontmatter 的 data_as_of 字段，检查是否超过 6 个月
+if [ -d "wiki/analysis" ]; then
+    SIX_MONTHS_AGO=$(date -v-6m "+%Y-%m-%d" 2>/dev/null || date -d "6 months ago" "+%Y-%m-%d")
+    while IFS= read -r mat; do
+        [ -z "$mat" ] && continue
+        data_as_of=$(grep "^data_as_of:" "$mat" 2>/dev/null | awk '{print $2}' | tr -d '"')
+        if [ -n "$data_as_of" ] && [[ "$data_as_of" < "$SIX_MONTHS_AGO" ]]; then
+            title=$(head -20 "$mat" | grep "^title:" | sed 's/title: *//' || basename "$mat" .md)
+            ISSUES="${ISSUES}STALE_DATA|${mat}|${title:-$(basename "$mat" .md)}|${data_as_of}
+"
+        fi
+    done < <(find wiki/analysis -path "*/materials/*.md" -name "*.md" 2>/dev/null || true)
+fi
+
 # --- 输出标签统计（供 Claude 分析标签碎片） ---
 if [ -d "wiki/sources" ]; then
     TAG_STATS=""
