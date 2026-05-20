@@ -17,6 +17,9 @@
 
 set -e
 
+# cron 环境 PATH 精简，需手动添加 claude 路径
+export PATH="/Applications/cmux.app/Contents/Resources/bin:$PATH"
+
 TASK=""
 USE_COARSE=false
 
