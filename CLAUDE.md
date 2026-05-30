@@ -40,7 +40,14 @@
             ├── materials/    # 搜集的原始资料（网页抓取等）
             ├── notes.md      # 研究笔记（中间产出、信息缺口记录）
             ├── report.md     # 最终研究报告（结论、来源、未解决问题）
-            └── follow-ups/   # 持续跟踪项（研究产出中需要跟进的部分）
+            ├── follow-ups/   # 持续跟踪项（研究产出中需要跟进的部分）
+            └── skills/       # ⭐ 书籍蒸馏产出（仅书籍课题，用户确认蒸馏后创建）
+                ├── INDEX.md  #   候选 skill 索引
+                ├── candidates/ #  待筛选 skill
+                ├── rejected/   #  不达标的候选
+                └── {skill名}/  #  最终产出的 skill
+                    ├── SKILL.md        # skill 定义
+                    └── test-prompts.json # 测试提示词
 ```
 
 ## 文章处理流程
@@ -117,6 +124,7 @@ related: [[相关文章1]], [[相关文章2]]
    - 读取 `context/` 下相关的个人上下文
    - 扫描知识库已有内容，标记已知/未知
    - 列出搜索方向
+   - **书籍检测**：课题名含《》时标记 `type: book`，询问用户是否蒸馏方法论为 skill
    - 向用户确认研究方向，用户可补充/调整
 
 2. **搜集**：搜索 + 抓取
@@ -152,6 +160,12 @@ related: [[相关文章1]], [[相关文章2]]
    - 用户确认后，在 `follow-ups/` 下创建跟踪文件
    - 同时在 `todos/active.md` 的 `## 跟踪项` 下创建课题子标题（如 `### 拼多多`），添加跟踪待办
 
+8. **蒸馏（仅书籍课题）**：用户在开题时确认蒸馏时执行
+   - 调用 `cangjie-skill`（book2skill）从研究材料中蒸馏可执行方法论
+   - 产出目录：`wiki/analysis/{课题名}/skills/`
+   - 创建全局软链接：`~/.claude/skills/books/{课题名}-{skill名}.md`
+   - 更新全局索引：`~/.claude/skills/books/_index.md`
+
 ### plan.md 格式
 
 ```markdown
@@ -159,6 +173,8 @@ related: [[相关文章1]], [[相关文章2]]
 topic: 课题名称
 created: YYYY-MM-DD
 status: active | completed
+type: book  <!-- 仅书籍课题添加 -->
+distill: true  <!-- 仅用户确认蒸馏时添加 -->
 ---
 
 ## 研究问题

@@ -37,6 +37,8 @@ plan.md 格式：
 topic: 课题名称
 created: YYYY-MM-DD
 status: active
+type: book  <!-- 仅书籍课题添加此字段 -->
+distill: true  <!-- 仅用户确认蒸馏时添加此字段 -->
 ---
 
 ## 研究问题
@@ -60,11 +62,23 @@ status: active
 - [ ] 知识入库
 ```
 
+**书籍检测**：如果课题名称包含书名号《》或用户明确说这是一本书的研究，在 plan.md 中添加 `type: book`，然后**询问用户**：
+
+```
+检测到这是一本书的研究。是否同时蒸馏方法论为 skill？
+- 是：研究 + 蒸馏一气呵成，产出知识层（report）+ 工具层（skills/）
+- 否：只做常规研究，产出知识层
+```
+
+用户确认蒸馏 → 在 plan.md 中添加 `distill: true`。
+
 **向用户展示 plan.md 的核心内容**（研究问题、已有认知、信息缺口），确认研究方向。用户可以补充/调整/直接确认。
 
 ### 2. 搜集资料
 
 基于 plan.md 的搜索计划搜集：
+
+**已有 skill 检索**（书籍课题执行）：如果 plan.md 标记了 `type: book`，检查 `~/.claude/skills/books/_index.md` 是否有与当前课题相关的方法论 skill。如有，在 plan.md "已有认知"中列出这些 skill 的名称和摘要，供研究阶段参考。
 
 **搜索策略**：
 - 每个方向用 WebSearch 搜索，关键词从搜索计划提取
@@ -352,7 +366,39 @@ context: analysis/{课题名}
    - 在 `todos/active.md` 对应分类的 `### 长期` 下添加：`- [ ] 跟进：{课题} - {项} \`cadence: monthly\` \`created: YYYY-MM-DD\``
 5. 用户说不需要 → 仅记录到 log.md
 
-## 错误处理
+### 8. 蒸馏（仅书籍课题 + 用户确认时执行）
+
+当 plan.md 同时标记 `type: book` 和 `distill: true` 时，在研究完成（步骤 4-7）后执行蒸馏。
+
+#### 8a. 调用 cangjie-skill
+
+使用 `cangjie-skill`（book2skill）的流程，从研究材料中蒸馏可执行方法论：
+
+1. 将 materials/ 和 notes.md 作为输入，调用 cangjie-skill 的提取流程
+2. 输出目录设为 `wiki/analysis/{课题slug}/skills/`（而非 cangjie-skill 默认的 `books/` 目录）
+3. cangjie-skill 产出：
+   - `skills/INDEX.md` — 候选 skill 索引
+   - `skills/candidates/` — 待筛选的 skill 候选
+   - `skills/rejected/` — 不达标的候选
+   - `skills/{skill名}/SKILL.md` — 最终产出的 skill
+   - `skills/{skill名}/test-prompts.json` — 测试提示词
+
+#### 8b. 创建全局软链接
+
+蒸馏完成后，将产出的 skill 通过软链接接入全局 CC：
+
+1. 确保 `~/.claude/skills/books/` 目录存在
+2. 为每个产出的 skill 创建软链接：
+   ```bash
+   ln -sf "$WIKI_ROOT/wiki/analysis/{课题slug}/skills/{skill名}/SKILL.md" \
+          ~/.claude/skills/books/{课题名}-{skill名}.md
+   ```
+3. 更新 `~/.claude/skills/books/_index.md`，添加新条目：
+   ```markdown
+   - [{课题名} - {skill名}](books/{课题名}-{skill名}.md) — 一句话摘要
+   ```
+
+4. 向用户汇报蒸馏结果："从《{书名}》中蒸馏出 N 个方法论 skill：{skill名列表}，已链接到全局 CC 可复用。"
 
 - **搜索无结果**：告知用户，建议调整关键词或方向
 - **网页抓取失败**：跳过，在 notes.md 记录失败 URL，继续其他来源
@@ -366,6 +412,8 @@ context: analysis/{课题名}
 - 知识卡片格式：参见 `CLAUDE.md` 中「知识卡片格式」
 - 待办管理：`todos/active.md`（由 wiki-todo 管理，research 写入跟踪项）
 - 抓取工具：`mcp__web_reader__webReader`
+- 书籍蒸馏：`cangjie-skill`（book2skill，依赖，位于 `~/.claude/skills/cangjie-skill/`）
+- 全局 skill 索引：`~/.claude/skills/books/_index.md`
 
 ## 路径约定
 

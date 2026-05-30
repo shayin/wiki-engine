@@ -168,6 +168,31 @@ else
     echo "    ⚠ skills/ 目录不存在，跳过"
 fi
 
+# 检查 cangjie-skill 依赖（book2skill，用于书籍蒸馏）
+echo "    检查 cangjie-skill 依赖..."
+if [ -d "$CC_SKILLS_DIR/cangjie-skill" ]; then
+    echo "    ✓ cangjie-skill（已存在，跳过）"
+else
+    echo "    ⚠ cangjie-skill 未安装"
+    echo "      书籍蒸馏功能需要 cangjie-skill，请获取并安装到 $CC_SKILLS_DIR/cangjie-skill/"
+fi
+
+# 创建书籍 skill 全局目录和索引
+BOOKS_DIR="$CC_SKILLS_DIR/books"
+mkdir -p "$BOOKS_DIR"
+if [ ! -f "$BOOKS_DIR/_index.md" ]; then
+    cat > "$BOOKS_DIR/_index.md" << 'INDEX'
+# Books Skill 索引
+
+书籍研究蒸馏出的方法论 skill，通过 wiki-research 的书籍蒸馏流程自动生成。
+
+<!-- 格式：- [课题名 - skill名](books/课题名-skill名.md) — 一句话摘要 -->
+INDEX
+    echo "    ✓ books/ 目录和索引已创建"
+else
+    echo "    ✓ books/ 索引（已存在，跳过）"
+fi
+
 # ── 7. 配置 crontab ──
 if [ "$WITH_CRON" = true ]; then
     CRON_LINE="* * * * * cd \"$TARGET\" && .cron/scripts/cron-check.sh"
