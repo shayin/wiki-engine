@@ -79,11 +79,12 @@ distill: true  <!-- 仅用户确认蒸馏时添加此字段 -->
      - 如果没有文件，我可以尝试搜索下载 PDF
      ```
 
-2. **蒸馏意愿**（使用 cangjie-skill 的 RIA-TV++ 流程）：
-   - 用户已明确要求蒸馏（如"提炼skill"、"蒸馏"、"输出skill"等表述）→ 直接设置 `distill: true`，不再询问
+2. **蒸馏意愿**：使用 `cangjie-skill`（book2skill）的 RIA-TV++ 流程蒸馏方法论
+   - 用户已明确要求蒸馏（如"提炼skill"、"蒸馏"、"输出skill"等表述）→ 直接设置 `distill: true`，告知用户："将使用 cangjie-skill 蒸馏方法论为可执行 skill，产出存放在 skills/ 目录并通过软链接接入全局 CC。"
    - 用户未提及 → 询问：
      ```
      是否同时蒸馏方法论为 skill？
+     使用 cangjie-skill（RIA-TV++ 流程）从书中提取可执行方法论。
      - 是：研究 + 蒸馏一气呵成，产出知识层（report）+ 工具层（skills/）
      - 否：只做常规研究，产出知识层
      ```
