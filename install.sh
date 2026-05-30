@@ -63,6 +63,8 @@ echo ""
 # ── 1. 创建目录结构 ──
 echo "==> 创建目录结构..."
 mkdir -p "$TARGET"/{inbox,raw,context,decisions,todos}
+mkdir -p "$TARGET"/data
+touch "$TARGET"/data/.gitkeep
 mkdir -p "$TARGET"/wiki/{sources,topics,analysis}
 mkdir -p "$TARGET"/.cron/{logs,scripts}
 echo "    ✓ 目录结构创建完成"
