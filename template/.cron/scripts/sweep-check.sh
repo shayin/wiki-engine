@@ -146,7 +146,8 @@ if [ -d "wiki" ]; then
 
         # 检查目标是否存在（尝试多种路径）
         found="no"
-        for path in "$link_target" "wiki/${link_target}" "wiki/sources/$(basename "$link_target")" "wiki/topics/$(basename "$link_target")"; do
+        src_dir=$(dirname "$src_file")
+        for path in "$link_target" "${src_dir}/${link_target}" "wiki/${link_target}" "wiki/sources/$(basename "$link_target").md" "wiki/topics/$(basename "$link_target").md" "wiki/sources/$(basename "$link_target")" "wiki/topics/$(basename "$link_target")"; do
             if [ -f "$path" ]; then
                 found="yes"
                 break
