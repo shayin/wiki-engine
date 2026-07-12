@@ -169,6 +169,35 @@ if [ -n "$TODO_KEY" ]; then
 fi
 
 # ============================================================
+# event-calendar-check: 每天指定时间（逗号分隔，早晚各一次）
+# 扫描 macro-tracker 事件日历，有变化调 AI 分析 + 微信推送完整内容
+# ============================================================
+EC_KEY=""
+for t in $(echo "${EVENT_CALENDAR_TIMES:-11:30,19:00}" | tr ',' ' '); do
+    t_hour=$(echo "$t" | cut -d':' -f1 | sed 's/^0//')
+    t_min=$(echo "$t" | cut -d':' -f2)
+    now_min=$(( 10#$HOUR * 60 + 10#$MINUTE ))
+    due_min=$(( t_hour * 60 + t_min ))
+    if [ "$now_min" -ge "$due_min" ] && [ "$now_min" -lt "$(( due_min + 60 ))" ]; then
+        EC_KEY="event-calendar-${t_hour}${t_min}"
+        EC_DUE=$(to_epoch "${TODAY} ${t}")
+        break
+    fi
+done
+
+if [ -n "$EC_KEY" ]; then
+    EC_LAST=$(get_last_run "$EC_KEY")
+    [ -z "$EC_LAST" ] && EC_LAST=0
+    if [ "$EC_LAST" -lt "$EC_DUE" ]; then
+        echo "[$TS] 执行 event-calendar-check（${EC_KEY}）" >> "$LOG_FILE"
+        "$SCRIPT_DIR/event-calendar-check.sh" || true
+        echo "${EC_KEY}=$(date "+%s")  # $(date "+%Y-%m-%d %H:%M")" >> "$LAST_RUNS"
+    else
+        echo "[$TS] event-calendar: 今日该时段已跑，跳过" >> "$LOG_FILE"
+    fi
+fi
+
+# ============================================================
 # todo-remind (per-minute): 每分钟检查带 remind 标记的待办
 # ============================================================
 "$SCRIPT_DIR/todo-remind.sh" || true

@@ -31,3 +31,6 @@ REVIEW_TIME="23:15"
 
 # todo-remind: 待办提醒（多个时间逗号分隔）
 TODO_TIMES="11:00,23:00"
+
+# 事件日历扫描（早晚各一次，event-calendar-check.sh）
+EVENT_CALENDAR_TIMES="11:30,19:00"
