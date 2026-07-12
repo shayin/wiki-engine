@@ -273,10 +273,74 @@ if [ -d "wiki/sources" ]; then
     fi
 fi
 
-# --- 输出结果 ---
+# --- 输出结果 + 微信推送具体发现 + 清 pending 旧记录 ---
+source "$CRON_DIR/config.sh" 2>/dev/null || true
+PENDING="$CRON_DIR/pending.md"
+TS=$(date "+%Y-%m-%d %H:%M:%S")
+
 if [ -z "$ISSUES" ]; then
     echo "ALL CLEAR"
+    MSG="🧹 知识库扫描（${TS}）：✅ ALL CLEAR，无问题"
+    echo "- [$TS] 🧹 sweep: ALL CLEAR" >> "$PENDING"
 else
-    # 去掉末尾空行
+    # 去掉末尾空行，保留 echo（wiki-cron 兼容）
     echo "$ISSUES" | sed '/^$/d'
+
+    # 统计各类问题
+    OVERDUE=$(echo "$ISSUES" | grep -c "OVERDUE_DECISION" || true)
+    MISSING=$(echo "$ISSUES" | grep -c "MISSING_FOLLOWUP" || true)
+    STALE=$(echo "$ISSUES" | grep -c "STALE_FOLLOWUP" || true)
+    STALE_TOPIC_N=$(echo "$ISSUES" | grep -c "STALE_TOPIC" || true)
+    ORPHAN=$(echo "$ISSUES" | grep -c "ORPHAN_SOURCE" || true)
+    BROKEN=$(echo "$ISSUES" | grep -c "BROKEN_LINK" || true)
+    MISPLACED=$(echo "$ISSUES" | grep -c "TODO_MISPLACED" || true)
+    CROSS=$(echo "$ISSUES" | grep -c "CROSS_TOPIC" || true)
+    STALE_DATA=$(echo "$ISSUES" | grep -c "STALE_DATA" || true)
+    TOTAL_ISSUES=$(echo "$ISSUES" | grep -c "|" || true)
+
+    # 构造具体消息（前 10 条问题详情，跳过 TAG_STATS）
+    TOP_ISSUES=$(echo "$ISSUES" | grep -v "TAG_STATS" | head -10 | while IFS='|' read -r type file detail extra; do
+        [ -z "$type" ] && continue
+        case "$type" in
+            OVERDUE_DECISION) echo "• ⏰ 到期决策：${detail}（${extra}）" ;;
+            MISSING_FOLLOWUP) echo "• ❓ 缺跟踪：${detail} 缺 follow-ups" ;;
+            STALE_FOLLOWUP) echo "• 🕐 跟踪逾期：${detail}（${extra}）" ;;
+            STALE_TOPIC) echo "• 📑 topic 缺更新：${detail}（${extra}）" ;;
+            ORPHAN_SOURCE) echo "• 🔗 孤立文章：${detail}" ;;
+            BROKEN_LINK) echo "• 💔 断链：${detail} → ${extra}" ;;
+            TODO_MISPLACED) echo "• 📋 待办错放：${detail}" ;;
+            CROSS_TOPIC) echo "• 🔗 跨课题关联：${detail} ↔ ${extra}" ;;
+            STALE_DATA) echo "• ⏰ 数据过期：${detail}（${extra}）" ;;
+        esac
+    done)
+
+    MSG="🧹 知识库扫描（${TS}）：发现 ${TOTAL_ISSUES} 个问题
+⏰到期决策${OVERDUE} ❓缺跟踪${MISSING} 🕐跟踪逾期${STALE} 💔断链${BROKEN} 🔗孤立${ORPHAN} 📑topic缺更新${STALE_TOPIC_N} ⏰数据过期${STALE_DATA}
+
+${TOP_ISSUES}
+
+说'扫一下'让 AI 精析处理。"
+
+    echo "- [$TS] 🧹 sweep: 发现 ${TOTAL_ISSUES} 个问题（到期${OVERDUE}/断链${BROKEN}/逾期${STALE}）" >> "$PENDING"
+fi
+
+# 微信推送（直接 curl，不用 bark）
+if [ -n "$WECHAT_ID" ] && [ -n "$WECHAT_PUSH_KEY" ]; then
+    curl -s -X POST "${WECHAT_PUSH_SERVER}/api/wechat/push" \
+        -H "Authorization: Bearer ${WECHAT_PUSH_KEY}" \
+        -H "Content-Type: application/json" \
+        -d "$(python3 -c "import json,sys; print(json.dumps({'wechat_id':sys.argv[1],'text':sys.argv[2]}))" "$WECHAT_ID" "$MSG")" >/dev/null 2>&1 &
+fi
+
+# 清理 pending.md 7 天前旧记录（防止无限增长）
+if [ -f "$PENDING" ]; then
+    SEVEN_DAYS_AGO=$(date -v-7d "+%Y-%m-%d" 2>/dev/null || date -d "7 days ago" "+%Y-%m-%d")
+    awk -v cutoff="$SEVEN_DAYS_AGO" '
+        /^#/ || /^>/ || /^<!--/ || /^-->/ || /^$/ { print; next }
+        /\[20[0-9]{2}-[0-9]{2}-[0-9]{2}/ {
+            match($0, /\[20[0-9]{2}-[0-9]{2}-[0-9]{2}/)
+            date=substr($0, RSTART+1, 10)
+            if (date >= cutoff) print
+        }
+    ' "$PENDING" > "$PENDING.tmp" 2>/dev/null && mv "$PENDING.tmp" "$PENDING" || rm -f "$PENDING.tmp"
 fi
