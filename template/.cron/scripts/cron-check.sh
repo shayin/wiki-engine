@@ -126,8 +126,28 @@ if [ "$DIGEST_DUE" -gt 0 ] && [ "$NOW_EPOCH" -ge "$DIGEST_DUE" ] && [ "$DIGEST_L
         done
     fi
     if [ "$INBOX_COUNT" -gt 0 ]; then
+        # 记录处理前的文章标题（处理后文章移走，先存）
+        INBOX_TITLES=""
+        for f in "$WIKI_DIR"/inbox/*.md; do
+            [ -f "$f" ] || continue
+            t=$(head -3 "$f" | grep -E "^# |^title:" | head -1 | sed 's/^# *//;s/^title: *//' | cut -c1-50)
+            [ -z "$t" ] && t=$(basename "$f" .md)
+            INBOX_TITLES="${INBOX_TITLES}- ${t}
+"
+        done
         echo "[$TS] 补跑 wiki-digest（inbox 有 ${INBOX_COUNT} 篇）" >> "$LOG_FILE"
         "$SCRIPT_DIR/wiki-cron.sh" wiki-digest || true
+        # 微信推送处理结果（文章标题列表）
+        MSG="📥 知识库入库（${TS}）：处理了 ${INBOX_COUNT} 篇文章
+
+${INBOX_TITLES}已生成知识卡片入库 sources/，原文移至 raw/。"
+        echo "- [$TS] 📥 digest: 处理 ${INBOX_COUNT} 篇" >> "$CRON_DIR/pending.md"
+        if [ -n "$WECHAT_ID" ] && [ -n "$WECHAT_PUSH_KEY" ]; then
+            curl -s -X POST "${WECHAT_PUSH_SERVER}/api/wechat/push" \
+                -H "Authorization: Bearer ${WECHAT_PUSH_KEY}" \
+                -H "Content-Type: application/json" \
+                -d "$(python3 -c "import json,sys; print(json.dumps({'wechat_id':sys.argv[1],'text':sys.argv[2]}))" "$WECHAT_ID" "$MSG")" >/dev/null 2>&1 &
+        fi
     else
         echo "[$TS] digest: inbox 空，跳过" >> "$LOG_FILE"
         echo "wiki-digest=$(date "+%s")  # $(date "+%Y-%m-%d %H:%M")" >> "$LAST_RUNS"
