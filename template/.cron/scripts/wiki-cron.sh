@@ -219,14 +219,12 @@ $RESEARCH_TRIGGER
 
         PROMPT="/$TASK
 
-由定时任务自动触发（cron 模式 · V2 全自动）。执行 sweep V2 流程，但**聚焦 P0，10 分钟内完成**：
-1. **只处理 P0**：OVERDUE_DECISION（到期决策）、BROKEN_LINK（断链）、STALE_FOLLOWUP（跟踪项逾期>30天）、STALE_DATA（数据过期>6月）
-2. **跳过低优先级**：ORPHAN_SOURCE（孤立文章）、TAG_STATS（标签统计）、STALE_TOPIC（topic 缺更新）、CROSS_TOPIC（跨课题关联）——不紧急，留待手动处理
-3. P0 变更写入 wiki/changelog.md
-4. 关键事实翻转（P0）实时推微信（wechat-push.sh urgent）
-5. sweep 跑完调用 wechat-push.sh daily-report 推送日报告
-6. 不需要用户确认任何变更
-7. **时间预算 10 分钟**——P0 处理完就结束，不纠缠低优先级$RESEARCH_PROMPT"
+由定时任务自动触发（cron 模式 · V2 全自动）。请执行完整的 sweep V2 流程：
+1. 三档分类全自动执行（A 机械 / B 数据 / C 判断）
+2. 所有变更写入 wiki/changelog.md
+3. 关键事实翻转（P0）实时推微信（通过 wechat-push.sh urgent）
+4. sweep 跑完调用 wechat-push.sh daily-report 推送日报告
+5. 不需要用户确认任何变更$RESEARCH_PROMPT"
 
         OUTPUT=$(claude -p "$PROMPT" 2>&1 | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g') || true
 
