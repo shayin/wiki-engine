@@ -298,21 +298,20 @@ else
     STALE_DATA=$(echo "$ISSUES" | grep -c "STALE_DATA" || true)
     TOTAL_ISSUES=$(echo "$ISSUES" | grep -c "|" || true)
 
-    # 构造具体消息（前 10 条问题详情，跳过 TAG_STATS）
-    TOP_ISSUES=$(echo "$ISSUES" | grep -v "TAG_STATS" | head -10 | while IFS='|' read -r type file detail extra; do
-        [ -z "$type" ] && continue
-        case "$type" in
-            OVERDUE_DECISION) echo "• ⏰ 到期决策：${detail}（${extra}）" ;;
-            MISSING_FOLLOWUP) echo "• ❓ 缺跟踪：${detail} 缺 follow-ups" ;;
-            STALE_FOLLOWUP) echo "• 🕐 跟踪逾期：${detail}（${extra}）" ;;
-            STALE_TOPIC) echo "• 📑 topic 缺更新：${detail}（${extra}）" ;;
-            ORPHAN_SOURCE) echo "• 🔗 孤立文章：${detail}" ;;
-            BROKEN_LINK) echo "• 💔 断链：${detail} → ${extra}" ;;
-            TODO_MISPLACED) echo "• 📋 待办错放：${detail}" ;;
-            CROSS_TOPIC) echo "• 🔗 跨课题关联：${detail} ↔ ${extra}" ;;
-            STALE_DATA) echo "• ⏰ 数据过期：${detail}（${extra}）" ;;
-        esac
-    done)
+    # 构造具体消息（前 10 条问题详情，跳过 TAG_STATS）——用 awk 格式化避免 case 在子shell 的解析问题
+    TOP_ISSUES=$(echo "$ISSUES" | grep -v "TAG_STATS" | head -10 | awk -F'|' '{
+        type=$1; detail=$3; extra=$4
+        gsub(/^[ \t]+|[ \t]+$/, "", type); gsub(/^[ \t]+|[ \t]+$/, "", detail); gsub(/^[ \t]+|[ \t]+$/, "", extra)
+        if (type=="OVERDUE_DECISION") print "- 到期决策: " detail " (" extra ")"
+        else if (type=="MISSING_FOLLOWUP") print "- 缺跟踪: " detail
+        else if (type=="STALE_FOLLOWUP") print "- 跟踪逾期: " detail " (" extra ")"
+        else if (type=="STALE_TOPIC") print "- topic 缺更新: " detail " (" extra ")"
+        else if (type=="ORPHAN_SOURCE") print "- 孤立文章: " detail
+        else if (type=="BROKEN_LINK") print "- 断链: " detail " -> " extra
+        else if (type=="TODO_MISPLACED") print "- 待办错放: " detail
+        else if (type=="CROSS_TOPIC") print "- 跨课题关联: " detail " <-> " extra
+        else if (type=="STALE_DATA") print "- 数据过期: " detail " (" extra ")"
+    }')
 
     MSG="🧹 知识库扫描（${TS}）：发现 ${TOTAL_ISSUES} 个问题
 ⏰到期决策${OVERDUE} ❓缺跟踪${MISSING} 🕐跟踪逾期${STALE} 💔断链${BROKEN} 🔗孤立${ORPHAN} 📑topic缺更新${STALE_TOPIC_N} ⏰数据过期${STALE_DATA}
