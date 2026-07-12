@@ -1,384 +1,416 @@
 ---
 name: wiki-sweep
-description: 扫描知识库健康度。检查遗漏跟进项 + 知识库维护（topic 更新、标签碎片、孤立文章、断链）。触发：用户说"扫一下"、"检查遗漏"、"整理知识库"、"sweep"，或由 cron wrapper 自动触发
+description: 扫描知识库健康度 + 全自动维护。两档分类执行（机械修复/判断更新）+ 变量 state_snapshot 对比 + C 档两阶段查证 + 微信推送变更 + 支持单标的模式。触发：用户说"扫一下"、"检查遗漏"、"整理知识库"、"sweep"、"/wiki-sweep {标的}"，或由 cron wrapper 自动触发
 ---
 
-# Sweep — 知识库健康度扫描
+# Sweep V2 — 知识库全自动维护
+
+> **分层**：② 维护类 · 知识库自检与更新
+> **被调**：用户、cron 定时、wiki-mine（Phase 10 反向触发 C 档查证）
+> **调用**：wiki-mine（维度 M 盲区体检）、wiki-lens（维度 L 透镜碰撞回顾）、wiki-push（微信推送）
+
+## 核心理念
+
+**全自动 + 全透明**：所有可自动处理的变更直接落地，但通过 changelog + 微信推送让用户随时知道发生了什么。
+
+两档分类自动执行（A 档机械修复 + C 档判断更新）+ 变量失效基于 state_snapshot 对比（不是出现频率）+ tracker analysis 区只追加不覆盖 + 变量关停单独二次确认。
+
+**为什么不分"数据刷新"档**：变量数据一变，往往就需要重新分析判断。不存在"只刷数据不动分析"的场景——数据变化本身就是触发 C 档研究的信号。
 
 ## 触发条件
 
-- 用户说"扫一下"、"检查遗漏"、"有没有漏掉的"、"整理知识库"、"sweep"
-- cron wrapper 传入粗筛结果时自动触发
+- 用户说"扫一下"、"检查遗漏"、"整理知识库"、"sweep"
+- cron wrapper 自动触发（每日 SWEEP_TIME）
+- 手动调用 `/wiki-sweep`（全量扫描）
+- 手动调用 `/wiki-sweep {标的}`（单标的模式，如 `/wiki-sweep 拼多多`）
 
 ## 前置检查
 
-检查环境变量 `WIKI_ROOT` 是否设置。未设置则报错："未设置 WIKI_ROOT 环境变量，无法定位知识库。请运行 `echo $WIKI_ROOT` 检查。"验证 `$WIKI_ROOT/wiki/` 和 `$WIKI_ROOT/todos/` 目录存在。
-
-**失败模式 F-PRE：环境变量缺失**
-- **if** `WIKI_ROOT` 未设置或为空
-- **then** 输出错误信息并终止执行，不继续任何扫描步骤
-- **recover** 无，必须由用户修复环境变量后重新触发
-
-**失败模式 F-PRE2：核心目录缺失**
-- **if** `$WIKI_ROOT/wiki/` 或 `$WIKI_ROOT/todos/` 目录不存在
-- **then** 输出具体缺失路径，终止执行
-- **recover** 提示用户检查 WIKI_ROOT 指向是否正确，或运行 wiki-engine 初始化
+🔴 **CHECKPOINT：环境变量**
+- `WIKI_ROOT` 必须设置且指向知识库根目录
+- `$WIKI_ROOT/wiki/` 和 `$WIKI_ROOT/.cron/` 必须存在
+- 失败则终止，不继续
 
 ## 执行模式
 
 ### 模式 A：交互模式（用户手动触发）
+- 完整扫描所有维度
+- 两档全部自动执行
+- 关键变更实时推微信（如果用户在对话中）
+- 末尾给用户当日变更摘要
 
-完整扫描所有维度。
+### 模式 B：cron 模式（无人值守）
+- 与模式 A 执行内容相同
+- 区别：变更推送改为日报告模式（sweep 跑完一次性推）
+- 关键事实翻转（P0）依然实时推
 
-### 模式 B：精析模式（cron wrapper 传入粗筛结果）
+### 模式 C：单标的模式（手动触发 · `/wiki-sweep {标的}`）
+- **只扫指定标的**，不扫全库（3-5 分钟 vs 全量 30-60 分钟）
+- 执行范围：
+  - **维度 M（盲区挖掘）**：调用 wiki-mine 对该标的做盲区体检，挖出的新变量直接进入下面的 C 档查证
+  - A 档：只处理该标的相关的断链、registry 同步
+  - C 档：对该标的的 macro-tracker 所有关键变量（含 mine 新挖出的）做轻量探查 + 必要的深度研究
+  - 跨课题关联：只检查涉及该标的的关联
+  - 生命周期：只处理该标的引用的变量
+- 标的识别：支持中文名（"拼多多"）和 ticker（"PDD"），从 macro-tracker 文件名和 frontmatter 匹配
+- 推送：同模式 A，关键变更实时推
 
-当 prompt 中包含「粗筛已发现以下问题」时激活。此时：
-- **跳过全量扫描**，直接基于粗筛结果分析
-- 只读取粗筛命中的文件做深度判断
-- **维护类问题自动修复**：断链（H）、标签碎片（F）、Topic 更新（E）、孤立文章（G）— 这些是机械性操作，无需人工确认
-- **跟进类问题留待确认**：缺 follow-up（A）、决策到期（C）、长期待办缺失（D）、待办错分（I）、数据过时（J）— 这些需要用户判断优先级和 cadence
-- 用户下次交互时被提醒跟进类问题，说"处理 sweep 结果"确认创建
+> **单标的模式 = 盲区挖掘 + 变量查证 + 微信推送，一站式完成**。用户想"挖盲区"或"体检某个标的"时，直接用 `/wiki-sweep {标的}`。
 
 🔴 **CHECKPOINT：模式判定**
-- 如果 prompt 包含「粗筛已发现以下问题」→ 进入精析模式（B）
-- 否则 → 进入交互模式（A）
-- 两种模式的扫描范围和处理权限完全不同，判定错误会导致误操作
+- prompt 包含「cron 执行」或调用方为 wiki-cron.sh → 模式 B
+- prompt 包含标的名称/ticker → 模式 C
+- 否则 → 模式 A
 
-### 粗筛结果格式
+---
 
-粗筛脚本输出以换行分隔，每行一条，竖线分隔字段：
+## 完整执行流程
 
-| 类型 | 格式 | 示例 |
-|------|------|------|
-| 到期决策 | `OVERDUE_DECISION\|文件路径\|标题\|review_date` | `OVERDUE_DECISION\|decisions/pdd.md\|PDD投资决策\|2026-05-01` |
-| 缺跟进的研究 | `MISSING_FOLLOWUP\|report路径\|课题名` | `MISSING_FOLLOWUP\|wiki/analysis/pdd/report.md\|拼多多` |
-| 过期跟进项 | `STALE_FOLLOWUP\|文件路径\|跟踪项名\|最后跟踪日期` | `STALE_FOLLOWUP\|wiki/analysis/pdd/follow-ups/半托管.md\|半托管模式\|2026-04-01` |
-| Topic 缺更新 | `STALE_TOPIC\|topic路径\|标题\|未关联篇数` | `STALE_TOPIC\|wiki/topics/拼多多.md\|拼多多\|3 篇未关联` |
-| 孤立文章 | `ORPHAN_SOURCE\|source路径\|标题\|原因` | `ORPHAN_SOURCE\|wiki/sources/2026-05-01-xxx.md\|XXX文章\|无标签无关联` |
-| 断链 | `BROKEN_LINK\|源文件路径\|源文件标题\|断链目标` | `BROKEN_LINK\|wiki/sources/xxx.md\|文章A\|sources/不存在文件` |
-| 待办错分 | `TODO_MISPLACED\|文件路径\|待办描述\|建议归入` | `TODO_MISPLACED\|todos/active.md\|定期自动跟踪\|可能属于跟踪项：知识库优化` |
-| 数据过时 | `STALE_DATA\|材料路径\|数据描述\|data_as_of日期` | `STALE_DATA\|analysis/美国宏观经济/materials/001-xxx.md\|2Y-10Y利差\|2025-07` |
-| 跨课题关联 | `CROSS_TOPIC\|课题1\|关联课题列表\|共享标签` | `CROSS_TOPIC\|美国宏观\|拼多多,特斯拉\|共享标签: 油价` |
-| 标签统计 | `TAG_STATS\|all\|标签统计\|多行统计` | `TAG_STATS\|all\|标签统计\|10 股票\n8 技术` |
+### 阶段 0：环境准备
 
-精析时按类型映射到对应扫描维度：OVERDUE_DECISION → C，MISSING_FOLLOWUP → A，STALE_FOLLOWUP → A，STALE_TOPIC → E，ORPHAN_SOURCE → G，BROKEN_LINK → H，TAG_STATS → F，TODO_MISPLACED → I，STALE_DATA → J，CROSS_TOPIC → K。
+1. 加载配置：
+   - `.cron/config.sh`（推送配置、调度时间）
+   - `.cron/snapshots/staging.json`（待二次确认的变量关停队列，不存在则空）
+   - `context/finance.md`（持仓列表，识别 `priority: holding` 标的）
 
-## 执行步骤
+2. 初始化当日 changelog 段落（在 `wiki/changelog.md` 末尾追加）：
+   ```
+   ## YYYY-MM-DD HH:MM · wiki-sweep
+   **汇总**：扫描中...
+   ```
 
-### 0. 检查未解决的问题
+3. 创建**当日快照前置点**（如果今天还没有快照，调用 `snapshot-backup.sh`）
 
-读取 `.cron/sweep-issues.md`：
+### 阶段 1：扫描收集
 
-🔴 **CHECKPOINT：sweep-issues.md 是否存在未解决问题**
-- 如果存在未解决的问题（`- [ ]`），先输出给用户："上次扫描有 N 个未解决问题："，列出清单
-- 交互模式：等待用户确认处理（"处理 XX"、"全部跳过"）
-- 精析模式（cron）：跳过处理，只追加提醒到 pending.md，然后继续正常扫描
-- 用户确认"解决了 XX"后，将对应条目标记为 `- [x]`
+读取（按 priority 排序，holding 优先）：
 
-**失败模式 F0：sweep-issues.md 读取异常**
-- **if** sweep-issues.md 不存在或为空
-- **then** 跳过步骤 0，记录日志"Sweep issues 文件不存在，视为首次扫描"
-- **recover** 继续执行步骤 1
+- `wiki/index.md` — 计数对照
+- `wiki/variables/registry.md` — 全局变量清单
+- `wiki/variables/variables/*.md` — 关键变量档案（含 state_snapshot）
+- `wiki/analysis/*/follow-ups/*.md` — macro-tracker（type: macro-tracker）
+- `wiki/analysis/*/report.md` — 研究报告（仅 frontmatter + 结论段）
+- `wiki/sources/*.md` — 知识卡片（仅 30 天内，最多 50 篇）
+- `wiki/topics/*.md` — 主题页面
+- `wiki/connections/index.md` — 跨课题关联索引
+- `decisions/*.md` — 决策记录（status: open）
+- `todos/active.md` — 待办
 
-### 1. 收集扫描素材
+**优化**：大部分文件只读 frontmatter + 关键段落，不全读正文。只有以下情况读全文：
+- macro-tracker（要刷变量值）
+- 变量档案（要对比 state_snapshot）
+- priority=holding 标的的 report
 
-**交互模式**：读取以下内容（如果目录/文件不存在则跳过该来源，不报错）：
-- `wiki/log.md` — 读取全部，按行内日期筛选最近 30 天（`grep` 含当前月份和上月日期的行）
-- `wiki/analysis/*/report.md` — 所有研究报告
-- `wiki/analysis/*/follow-ups/*.md` — 所有跟进项（通过 frontmatter `status: active` 筛选）
-- `todos/active.md` — 当前待办
-- `decisions/*.md` — 通过 frontmatter `status: open` 筛选的决策
+**模式 C（单标的）优化**：只读该标的的 tracker / report / 相关变量档案，跳过其他标的。A 档全局检查（如 index 计数）保留。
 
-**精析模式**：只读取粗筛结果中列出的文件路径。如果路径不存在，跳过该条并记录。
+### 阶段 2：A 档处理（机械修复 · 直接执行）
 
-**失败模式 F1：关键文件缺失（交互模式）**
-- **if** `todos/active.md` 或 `wiki/log.md` 不存在
-- **then** 输出警告"缺少核心文件 {path}，部分维度无法扫描"，跳过该来源继续执行
-- **recover** 扫描结果中标注"因缺少 {path}，维度 X/Y 未检查"
+**纯机械操作，不调 Claude（除例外）。直接改文件 + 写 changelog + 标 P2。**
 
-**失败模式 F2：粗筛路径无效（精析模式）**
-- **if** 粗筛结果中的文件路径不存在
-- **then** 跳过该条，记录到日志"粗筛命中但文件不存在：{path}"
-- **recover** 其余有效路径继续分析
+#### A1. 索引计数同步
+- 读 `registry.md` 实际变量数 vs `index.md` 中记录的"变量数"
+- 不一致 → 直接更新 `index.md`
+- changelog 写：`auto-fix index.md 变量数 X → Y`
 
-### 2. 扫描维度
+#### A2. 断链修复（V1 维度 H）
+- 扫描所有 `[[]]` 链接
+- 检查目标文件是否存在
+- 修复策略：
+  - 文件改名了 → 通过模糊匹配找到新路径，更新链接
+  - 文件不存在 → 移除链接，保留文本
+  - 在 `raw/` 下的链接 → 跳过（不强制存在）
+- changelog 写：`auto-fix {文件} 断链 → {目标}（已更新/已移除）`
 
-逐项检查以下遗漏（精析模式只检查粗筛命中的维度）：
+#### A3. Topic 页面更新（V1 维度 E）
+- 扫描 topics/ 下每个页面的 tags
+- 找出 sources/ 下同标签但未关联的文章
+- 直接追加到 topic 的 `## 关联文章`
+- 超过 5 篇未关联才更新（避免频繁抖动）
+- changelog 写：`auto-fix {topic} 关联 N 篇新文章`
 
-**A. 研究报告遗漏跟进**
-- 读 report.md 的 `## 核心发现` 和 `## 未解决问题`
-- 检查同级 `follow-ups/` 目录是否存在且非空
-- **值得跟踪的判定标准**（满足任一即标记）：
-  - 包含具体数据/数字（如"占比 35%"、"增长 20%"）
-  - 涉及持续变化的指标（业务数据、市场份额、技术采纳率）
-  - 有明确的"需要关注"、"值得跟踪"、"后续观察"等表述
-  - 未解决问题中有可验证的假设
-- **不值得跟踪**：纯观点、历史事实、一次性事件、通用知识
-- 创建前先检查同课题下是否已有相同主题的跟进项（防重复）
+#### A4. 孤立文章处理（V1 维度 G · 谨慎版）
+- 扫描 sources/ 下无 tags 且无关联的文章
+- 30 天内的孤立文章 → 自动补标签（基于内容 LLM 判定，单文章消耗极少 token）
+- 30 天以前的 → 不动（避免大规模批量操作）
+- changelog 写：`auto-fix {source} 自动补标签 [xxx, yyy]`
 
-**B. 文章内容遗漏跟进**（仅交互模式）
-- 读取 `wiki/sources/` 下 frontmatter `date` 在 30 天内的卡片（限制最多 50 篇，避免 token 过高）
-- 按标签聚合，如果同一标签累计 >=3 篇且 topics/ 下无对应主题页面，标记为建议跟进
-- 标签匹配：frontmatter 中 `tags` 数组的交集，非精确匹配
+#### A5. registry 与 macro-tracker 同步
+- macro-tracker 里提到但未在 registry 登记的变量 → 自动加入 registry（分配新 ID）
+- changelog 写：`auto-fix registry.md 新增变量 V{XXX}（来自 {标的} tracker）`
 
-**C. 决策遗漏跟进**
-- 读 decisions/ 下 frontmatter `status: open` 的决策
-- 如果决策涉及可量化的预期（如"预计营收增长20%"）但没有对应 follow-up，标记为遗漏
-- review_date 已过但未复盘的，也标记为遗漏
+### 阶段 3a：C 档轻量探查（每个变量档案 · 调 Claude）
 
-**D. 长期待办缺失**
-- 读 `todos/active.md` 中 `### 长期` 下的待办
-- 检查每个长期待办是否有对应的 follow-up 文件（反向检查）
-- 检查每个 active follow-up 是否有对应的长期待办
-- 不一致项标记为遗漏
+**对所有变量档案（registry 中 status: active 的变量 + 关键 tracker），调 Claude 做轻量状态对比。**
 
-**E. Topic 页面缺更新**
-- 读 `wiki/topics/` 下每个 topic 页面的 tags
-- 扫描 `wiki/sources/` 下同标签的文章
-- 对比 topic 的 `## 关联文章` 列表，找出未关联的文章
-- 超过 2 篇未关联 → 建议更新 topic
-- 更新方式：追加新文章到 `## 关联文章`，如有必要更新 `## 核心发现`
+#### 执行方式
 
-**F. 标签碎片**
-- 读取粗筛输出的标签统计（TAG_STATS）
-- 识别可能重复的标签：
-  - 同义词（如"拼多多" vs "PDD" vs "Pinduoduo"）
-  - 单复数（如"芯片" vs "芯片产业"）
-  - 中英文混用（如"AI" vs "人工智能"）
-- 建议合并方向，不自动执行
-- 标签统一后需要批量更新对应 sources 的 frontmatter
-
-**G. 孤立文章**
-- 检查 `wiki/sources/` 下无标签且无 `[[]]` 关联的文章
-- 这些文章难以被检索到，建议：
-  - 补充标签（如果内容明确）
-  - 建立关联（如果与已有文章/主题相关）
-  - 标记为待清理（如果内容过时或质量差）
-
-**H. 断链检查**
-- 提取所有 `[[]]` 链接，检查目标文件是否存在
-- 跳过 `raw/` 下的链接（原文归档不强制存在）
-- 断链原因可能是：文件被重命名、路径变更、未创建
-- 建议修复方式：更新链接指向或创建缺失文件
-
-**I. 待办分类检查**
-- 读 `todos/active.md` 中 `## 跟踪项` 下所有子标题（### xxx），作为已知的专题跟踪组
-- 逐项检查 `## 工作` 和 `## 个人` 区（包括 `### 长期`）中的待办
-- 判定标准：如果待办内容与某个跟踪组的主题高度相关（语义匹配，不仅限于关键词），应归入该跟踪组
-- 常见错放模式：
-  - 知识库相关待办放在「工作/长期」而非「跟踪项/知识库优化」
-  - 投资相关待办放在「个人」而非对应股票的跟踪组
-  - 研究衍生待办放在通用区而非对应课题跟踪组
-- 输出建议移动方向，不自动执行
-
-**J. 研究数据时效性检查**
-- 扫描 `wiki/analysis/*/report.md` 和 `wiki/analysis/*/materials/*.md`
-- 检查核心量化数据是否有 `data_as_of` 或 `[截至 YYYY-MM-DD]` 标注
-- 对照 CLAUDE.md 时效窗口，判断数据是否过时
-- 核心数据超过时效窗口（经济指标 > 月度、公司数据 > 季度、市场数据 > 周）的研究，标记为需要更新
-- 输出建议：哪些研究需要补充最新数据
-
-**K. 跨课题关联发现**
-- 扫描 `wiki/topics/` 和 `wiki/analysis/*/report.md` 的核心发现
-- 读取 `wiki/connections/index.md` 了解已记录的关联
-- 检测未记录的跨课题关联：共享驱动因素（共振）、因果链（A→B）、对冲关系（A利好=B利空）、结论矛盾
-- 输出建议的关联分析卡片，用户确认后创建到 `wiki/connections/`
-
-**M. 变量沉淀检查**
-- **M1 变量登记完整性**：
-  - 扫描 `wiki/analysis/*/follow-ups/*.md`（type: macro-tracker）中提到的所有变量
-  - 检查每个变量是否在 `wiki/variables/registry.md` 中登记
-  - 未登记的变量 → 输出建议"以下变量未沉淀到全局库：xxx，建议加入 registry"
-- **M2 变量状态时效**：
-  - 检查 `wiki/variables/registry.md` 中所有变量的"截至"日期
-  - 超过 3 个月未更新的变量 → 标记为"⚠️ 数据可能过时"
-  - 超过 6 个月未更新的变量 → 标记为"⚠️ 强烈建议刷新"
-- **M3 macro-tracker 是否引用全局 ID**：
-  - 检查 macro-tracker 里的变量描述是否引用全局变量 ID（如"V101 尿素价格"）
-  - 未引用的 → 输出建议"建议在 macro-tracker 里引用全局变量 ID 以便跨标的关联"
-- **M4 新板块模板缺失**：
-  - 扫描所有 macro-tracker 的板块归属
-  - 如果某个板块在 `wiki/variables/sectors/` 下没有对应模板 → 建议创建
-- **M5 盲区变量挖掘**（建议性，需用户确认后执行）：
-  - 对存在 macro-tracker 但超过 2 周未跑 wiki-mine 的标的 → 输出建议"建议对 XX 标的跑一次 `/wiki-mine` 体检，发现盲区变量"
-  - 对比同板块兄弟标的的变量覆盖差异，发现系统性缺失的变量维度
-  - 用户确认后调用 `/wiki-mine` 执行深度挖掘
-- 本维度为**跟进类**，不自动修复，写入 sweep-issues.md 待用户确认
-
-### 3. 输出扫描结果
-
-🔴 **CHECKPOINT：扫描结果判定**
-- 汇总所有维度发现的问题数量
-- 区分跟进项（需用户确认）和知识库维护（可自动修复）
-- 如果某个维度扫描异常（文件读取失败、目录不存在），在输出中标注该维度为"未检查"而非假装没问题
-
-汇总分为两部分：**跟进项** + **知识库维护**，按优先级排序：
+对每个变量档案执行：
 
 ```
-扫描完成，发现 X 个问题：
+prompt 模板（给 Claude 的子任务）：
 
-## 跟进项（需要用户确认）
+变量 ID: V006
+变量名: Warsh Fed Chair
+当前 state_snapshot: Warsh 是 Fed Chair 热门候选人（截至 2026-04-15）
+影响标的: BABA, TSLA, QCOM（持仓标的）
 
-🔴 应该跟进但完全缺失：
-1. [研究：PDD] 半托管模式占比变化（报告核心发现，无跟进项）
-2. [决策：xxx] xxx（决策有预期但无跟踪）
-
-🟡 可能值得跟进：
-3. [文章] 新能源主题已有 4 篇文章，建议持续跟踪行业趋势
-
-🟢 已有跟进但缺少长期待办：
-4. [PDD 半托管模式] follow-up 存在但 todos 里没有对应项
-
-## 知识库维护（可一键修复）
-
-📦 Topic 需更新：
-5. [拼多多] 有 3 篇新文章未关联到 topic 页面
-
-🏷️ 标签碎片：
-6. "PDD"(2篇) 和 "拼多多"(5篇) 可能是同一概念，建议合并
-
-🔗 断链：
-7. [文章A] → sources/不存在文件.md（目标不存在）
-
-📄 孤立文章：
-8. [XXX文章] 无标签无关联，建议补充分类
-
-回复"全部处理"处理所有项，或指定编号（如"1 3 5"）选择性处理。
-回复"只修维护"只处理知识库维护部分（5-8）。
+任务：
+1. 用 web search 查"Warsh Fed Chair 2026"最新进展
+2. 对比 state_snapshot 与当前查到的状态
+3. 输出 JSON 判定：
+   {
+     "verdict": "NO_CHANGE | STATE_CHANGED | EVIDENCE_CONFLICT | LIKELY_DEAD",
+     "confidence": "high | medium | low",
+     "old_snapshot": "采集时的状态描述",
+     "new_snapshot": "现在的状态描述（如变化）",
+     "evidence_urls": ["url1", "url2"],
+     "needs_deep_research": true | false
+   }
 ```
 
-**精析模式**：先执行维护类自动修复（见步骤 5），然后输出两部分：
-1. 已自动修复的维护项（列出具体操作）
-2. 待确认的跟进项（格式同上 1-4 号）
+#### 判定后路由
 
-末尾改为"维护项已自动修复，跟进项待下次对话确认。"
+| Verdict | Confidence | 路由 |
+|---------|-----------|------|
+| NO_CHANGE | 任意 | 跳过，不进 3b |
+| STATE_CHANGED | high | 进 3b 队列（高优先级） |
+| STATE_CHANGED | low/medium | 进 3b 队列（让 3b 验证） |
+| EVIDENCE_CONFLICT | 任意 | 进 3b 队列 + 标 disputed |
+| LIKELY_DEAD | 任意 | 进 staging 关停队列（不进 3b） |
 
-**失败模式 F3：全维度零结果**
-- **if** 所有维度扫描结果均为零（没有发现任何问题）
-- **then** 输出"NOTIFY: sweep 完成：一切正常"，不创建 sweep-issues.md 条目
-- **recover** 正常结束
+#### P0 实时推送
 
-### 4. 持久化问题清单
-
-将本次扫描发现的问题写入 `.cron/sweep-issues.md`：
-
-```markdown
-# Sweep 问题清单
-
-## YYYY-MM-DD 扫描
-
-- [ ] A. [研究：PDD] 半托管模式占比变化 `type: 跟进`
-- [x] E. [拼多多] 3 篇新文章未关联到 topic `type: 维护`（已自动修复）
-- [x] F. "PDD"和"拼多多"标签碎片 `type: 维护`（已自动修复）
-```
-
-- 每次扫描追加新的 `## YYYY-MM-DD 扫描` 区块
-- 上一轮未解决的问题保留不动（不重复写入）
-- 已解决的问题标记 `- [x]`
-- **精析模式**：维护类问题直接标记 `- [x]`（已自动修复），跟进类标记 `- [ ]`（待确认）
-- **交互模式**：所有问题初始标记 `- [ ]`，用户确认处理后改为 `- [x]`
-
-🔴 **CHECKPOINT：问题去重**
-- 写入前比对上一轮未解决的问题清单
-- 如果本轮发现的某个问题在上轮已存在且未解决，不重复追加
-- 避免同一问题在多次扫描中反复出现
-
-### 5. 处理确认结果
-
-#### 交互模式
-
-用户确认后，分别处理两类问题：
-
-**跟进项创建**（1-4 号）：
-1. 在对应课题的 `follow-ups/` 下创建跟踪文件（格式见 CLAUDE.md follow-up 格式）
-2. 在 `todos/active.md` 对应分类的 `### 长期` 下添加：`- [ ] 跟进：{课题名} - {跟踪项} \`cadence: monthly\` \`created: YYYY-MM-DD\``
-3. 更新 `wiki/log.md`：`- YYYY-MM-DD HH:mm: sweep 创建了 {N} 个跟进项`
-
-**知识库维护**（5-8 号）：
-- **Topic 更新**：读取未关联的文章，提取摘要追加到 topic 的 `## 关联文章`，如有重要新发现更新 `## 核心发现`
-- **标签合并**：将碎片标签统一（如 PDD → 拼多多），批量更新对应 sources 的 frontmatter
-- **断链修复**：更新 `[[]]` 指向正确路径，或创建缺失文件
-- **孤立文章补充**：为孤立文章打标签、建关联，或标记为待清理
-
-**失败模式 F4：跟进项创建冲突**
-- **if** 同课题下已存在同名跟进项（用户在确认间隔期间手动创建了，或上次扫描遗漏）
-- **then** 跳过该条，输出警告"跟进项已存在：{name}，跳过创建"
-- **recover** 继续处理剩余确认项
-
-**失败模式 F5：知识库维护写操作失败**
-- **if** 修改 source frontmatter 或 topic 文件时目标文件被删除或权限不足
-- **then** 跳过该条，记录错误到日志，输出"维护项 {N} 修复失败：{原因}"
-- **recover** 其他维护项继续执行，失败项保留在 sweep-issues.md 的 `- [ ]` 列表
-
-#### 精析模式（自动修复维护类）
-
-精析模式下，维护类问题（E/F/G/H 维度）**直接自动修复**，无需等待用户确认：
-
-1. **断链修复（H）**：更新 `[[]]` 指向正确路径，或移除无法修复的链接
-2. **标签合并（F）**：将碎片标签统一，批量更新对应 sources 的 frontmatter
-3. **Topic 更新（E）**：读取未关联的文章，提取摘要追加到 topic 的 `## 关联文章`
-4. **孤立文章（G）**：为内容明确的文章补充标签，其余标记待清理
-
-修复后更新 `wiki/log.md`：`- YYYY-MM-DD HH:mm: sweep 自动修复了 {N} 个维护项（{具体操作}）`
-
-跟进类问题（A/C/D/I/J/K 维度）**不自动处理**，只写入 sweep-issues.md 的 `- [ ]` 待确认清单。
-
-🔴 **CHECKPOINT：精析模式权限边界**
-- 只有 E/F/G/H（维护类）允许自动修复
-- A/C/D/I/J/K（跟进类）严格禁止自动创建——这些涉及用户判断优先级，自动创建会制造噪声
-
-## 通知输出
-
-回复末尾**必须**输出一行 NOTIFY（供 cron wrapper 解析，用 `grep "^NOTIFY:"` 提取）：
+STATE_CHANGED + confidence: high + 涉及 holding 标的 → **立即推微信**：
 
 ```
-NOTIFY: sweep 完成：发现 X 个跟进项 + Y 个维护项
+wechat-push.sh urgent "V006 Warsh 状态翻转" "旧：Warsh 热门候选人 → 新：Trump 转向 Powell 连任"
 ```
 
-- **交互模式**：
-  - 有问题：`NOTIFY: sweep 完成：发现 2 个跟进项 + 3 个维护项`
-  - 无问题：`NOTIFY: sweep 完成：一切正常`
-- **精析模式**：
-  - 有问题：`NOTIFY: sweep 完成：已自动修复 Y 个维护项，待确认 X 个跟进项（具体见日志）`
-  - 全是维护项（无跟进项）：`NOTIFY: sweep 完成：已自动修复 Y 个维护项`
-  - 全是跟进项（无维护项）：`NOTIFY: sweep 完成：发现 X 个跟进项待确认`
-  - 无问题：`NOTIFY: sweep 完成：一切正常`
+不积压到日报告，发生即推。
+
+#### Token 预算
+
+每个变量档案查证约 30-50K tokens。预算无硬上限，但单次 sweep 总 token 若超过 5M → 暂停，写入日志待续。
+
+### 阶段 3b：C 档深度聚焦研究（仅 3a 标记的变量 · 调 Claude）
+
+**对 3a 标记 STATE_CHANGED / EVIDENCE_CONFLICT 的变量，走聚焦研究。**
+
+#### 执行方式
+
+对每个待研究变量：
+
+```
+prompt 模板：
+
+变量 ID: V006
+变化类型: STATE_CHANGED
+3a 输出:
+  - old: Warsh 热门候选人
+  - new: Trump 转向 Powell 连任
+  - 证据: [url1, url2]
+
+任务（聚焦模式 · 只研究变化部分）：
+1. 验证变化是否真实（多源交叉）
+2. 评估变化对持仓标的的影响（BABA/TSLA/QCOM）
+3. 更新变量档案:
+   - state_snapshot 字段 → 新值
+   - analysis 区追加（永不覆盖）：
+     [auto: YYYY-MM-DD] 状态从「{old}」→「{new}」
+     证据：[来源1][来源2]
+     对持仓影响：xxx
+4. 更新 registry.md 该变量的"当前状态"列
+5. 更新所有引用该变量的 macro-tracker 的「关键变量」表
+
+输出：
+- 更新了哪些文件
+- 对持仓的核心影响判断
+- 是否触发任何"确认规则"
+```
+
+#### 关键约束
+
+- **analysis 区只追加**：用 `[auto: YYYY-MM-DD]` 标记，不覆盖用户手写内容
+- **state_snapshot 可覆盖**：这是数据字段，错了就改
+- **registry 同步更新**：变量的"当前状态"列必须同步
+- **macro-tracker 引用同步**：所有引用该变量的 tracker 的当前值列同步
+
+#### 输出
+
+每条 3b 处理都进 changelog：
+```
+auto-update V006 Warsh Fed Chair
+  → state: Warsh 候选 → Powell 连任
+  → 影响: 利率路径预期稳定，BABA/TSLA 估值天花板抬升
+  → 文件: variables/warsh-fed-chair.md, registry.md, 3 个 tracker
+```
+
+### 阶段 4：跨课题关联检查（V1 维度 K · 强化版）
+
+**扫描未记录的跨课题关联。传导链 ≥2 跳 + 数据支撑才写入 connections/。**
+
+1. 读取所有 macro-tracker 的「变量地图」段
+2. 检查未在 `edges.md` 记录的潜在传导链
+3. 对每条候选链：
+   - 找 ≥2 个数据点支撑（否则丢弃）
+   - 至少 2 跳（A→B→C，不能直接 A→B）
+4. 通过校验的 → 创建 connection 卡片到 `wiki/connections/`
+5. 加入 `edges.md` 的"跨板块传导边"或"跨标的联动边"
+6. changelog 写：`auto-conn {标的A} ↔ {标的B} {联动机制}`
+
+### 阶段 5：变量生命周期管理
+
+#### 6.1 关停 staging 队列处理
+
+读取 `.cron/snapshots/staging.json`：
+
+```json
+{
+  "pending_close": [
+    {
+      "variable_id": "V302",
+      "first_detected": "2026-07-01",
+      "last_check": "2026-07-05",
+      "consecutive_likely_dead": 2,
+      "evidence": "..."
+    }
+  ]
+}
+```
+
+规则：
+- `consecutive_likely_dead >= 3`（连续 3 次 sweep 同样判断）→ 关停落地
+  - registry 中状态改为 `closed`
+  - 变量档案加标记 `status: closed (auto: YYYY-MM-DD)`
+  - **不删除档案**（保留历史）
+  - changelog 写：`auto-closed V302 {变量名}`
+- 否则 → `consecutive_likely_dead++`，留在 staging
+
+#### 6.2 新增疑似失效变量
+
+阶段 3a 输出 LIKELY_DEAD 的变量 → 加入 staging：
+- 已在 staging → 更新 `last_check` + `consecutive_likely_dead++`
+- 不在 staging → 新建条目
+
+changelog 写：`auto-close-pending V302 进入关停 staging（连续 N 次）`
+
+### 阶段 6：跟进项处理（保留 V1 维度 A/C/D/J · 半自动）
+
+**这些维度涉及用户判断优先级，半自动：自动写入 sweep-issues.md，不自动创建 follow-up。**
+
+- 维度 A：研究报告遗漏跟进
+- 维度 C：决策到期复盘
+- 维度 D：长期待办缺失
+- 维度 J：研究数据时效性（C 档已处理变量级别的数据时效）
+
+写入 `.cron/sweep-issues.md`，标记 `- [ ]`。下次对话提醒用户。
+
+**注**：维度 I（待办分类）、F（标签合并建议）、M5（盲区变量挖掘建议）依然输出建议但不自动执行——这些是策略层判断，不是机械操作。
+
+### 阶段 7：输出与推送
+
+#### 7.1 完成 changelog 段落
+
+更新 `wiki/changelog.md` 当日段落的「汇总」行：
+
+```
+## 2026-07-05 23:15 · wiki-sweep
+
+**汇总**：变更 12 条（P0 ×1，P1 ×3，P2 ×8）
+
+#### P0 实时推送
+- `auto-state V006 Warsh Fed Chair` → variables/warsh-fed-chair.md
+  旧: Warsh 热门候选人 / 新: Trump 转向 Powell 连任
+  影响: BABA/TSLA 估值
+  [详细...]
+
+#### P1 日报告
+- `auto-update 拼多多 tracker` → ...
+- `auto-conn PDD ↔ BABA` → ...
+- `auto-close-pending V302` → ...
+
+#### P2 仅 changelog
+- `auto-fix index.md` 计数 63 → 67
+- `auto-refresh V001 10Y` 4.20% → 4.35%
+- `auto-fix registry.md` 新增 V016
+- ...
+
+#### 待二次确认
+- V302（连续 2 次判定失效，待第 3 次确认）
+```
+
+#### 7.2 微信推送
+
+**模式 A（交互）**：
+- P0 实时推：3a 阶段已经推过
+- 末尾给用户摘要（不另外推微信，因为用户在对话中）
+
+**模式 B（cron）**：
+- P0 实时推：3a/3b 阶段发生即推
+- 日报告：sweep 跑完调用 `wechat-push.sh daily-report`
+  - 有变更：逐条列出（不只数量）
+  - 无变更：推一条「今日 N 条变更，全部自动处理完毕」
+
+#### 7.3 更新 sweep-issues.md
+
+- 阶段 6 的跟进项写入
+- 上一轮未解决的不重复写
+
+#### 7.4 更新 wiki/log.md
+
+追加一行：`- YYYY-MM-DD HH:MM: sweep V2 完成（P0×N P1×N P2×N）`
+
+#### 7.5 触发快照
+
+调用 `snapshot-backup.sh`（创建当日快照，sweep 后状态）
+
+---
 
 ## 反例与黑名单
 
-以下是 wiki-sweep **明确不应该做**的事。违反任何一条都属于行为越界：
+1. **不要覆盖 tracker 的 analysis 段**：永远只追加 `[auto: YYYY-MM-DD]` 标记的新段落。
+2. **不要在 A 档调 Claude 做研究**：A 档是纯机械操作，不调 LLM（A4 孤立文章补标签除外，那是单文件小操作）。
+3. **不要把数据刷新和分析拆开**：数据变化本身就是 C 档研究的触发信号，不存在"只刷数据不动分析"。
+4. **不要静默关停变量**：所有变量关停必须经 staging 队列 3 次连续判定，且 changelog 必须记录。
+5. **不要修改 `raw/` 目录下任何文件**。
+6. **不要修改 `context/` 目录下任何文件**（用户维护，AI 只读）。
+7. **不要删除任何文件**：关停变量只是状态变更，不删除档案。
+8. **不要跳过 staging 二次确认**：即使 confidence: high 的 LIKELY_DEAD 也要进 staging，不能直接关停。
+9. **不要在阶段 3a 省略搜索**：每个变量档案都要查最新状态，不能用"上次查过没变"为借口跳过。
+10. **不要在阶段 4 创建无数据支撑的关联**：传导链必须 ≥2 跳 + 数据点支撑，否则丢弃。
 
-1. **不要自动创建跟进项（精析模式）**：精析模式下，跟进类问题只能写入 `- [ ]` 待确认清单，不能自动创建 follow-up 文件或待办。自动创建会制造噪声，违背"跟进需要用户判断优先级"的原则。
+## 失败模式
 
-2. **不要修改 `raw/` 目录下的任何文件**：原文归档是不可变的历史记录，sweep 不应该为了修复断链或补充标签而去修改 raw 目录中的文件。
+| ID | 触发 | 处理 |
+|----|------|------|
+| F-PRE | WIKI_ROOT 未设置 | 终止 |
+| F-API | C 档探查中 MCP 工具调用失败 | 跳过该变量本次探查，changelog 标记 `data-fetch-failed`，下次再试 |
+| F-LLM | Claude 调用超时 | 跳过该变量，下次再查 |
+| F-STAGING | staging.json 解析失败 | 视为空 staging，从头开始 |
+| F-CONFLICT | 用户在 sweep 期间手改了同一文件 | 以用户版本为准，sweep 改动放弃 |
 
-3. **不要在扫描过程中联网搜索或拉取外部数据**：sweep 的职责是检查知识库内部健康度，不是做增量研究。如果发现数据过时（维度 J），只标记"需要更新"，不自动执行 wiki-update。
+## 路径约定
 
-4. **不要自动合并标签**：标签碎片（维度 F）只输出建议，不自动执行合并。标签合并会影响大量 source 文件的 frontmatter，一旦合并方向错误，回滚成本极高。必须经用户确认后再批量操作（交互模式的步骤 5）。
-
-5. **不要在 B 维度扫描超过 50 篇文章**：source 卡片读取有 token 上限，超过 50 篇会导致上下文溢出或性能下降。如果 30 天内文章超过 50 篇，按日期倒序取最近的 50 篇。
-
-6. **不要删除任何文件**：即使是孤立文章或过时数据，sweep 只标记建议，不执行删除。文件删除是不可逆操作，必须由用户决定。
-
-7. **不要在交互模式中跳过用户确认**：交互模式下所有跟进项（1-4 号）必须等用户明确说"处理"才执行，不能因为"看起来很重要"就跳过确认。
-
-8. **不要重复写入已有问题**：如果 sweep-issues.md 中已有同一条未解决的问题，不要在每次扫描时重复追加。步骤 4 的 CHECKPOINT 去重机制就是为了防止这个问题。
+- 变量档案：`$WIKI_ROOT/wiki/variables/variables/{slug}.md`
+- registry：`$WIKI_ROOT/wiki/variables/registry.md`
+- edges：`$WIKI_ROOT/wiki/variables/edges.md`
+- macro-tracker：`$WIKI_ROOT/wiki/analysis/{标的}/follow-ups/macro-tracker.md`
+- changelog：`$WIKI_ROOT/wiki/changelog.md`
+- staging：`$WIKI_ROOT/.cron/snapshots/staging.json`
+- sweep-issues：`$WIKI_ROOT/.cron/sweep-issues.md`
+- 微信推送：`source $WIKI_ROOT/.cron/scripts/wechat-push.sh`
 
 ## 关联资源
 
-- 粗筛脚本：`scripts/sweep-check.sh`（cron 模式下由 wiki-cron.sh 调用，输出粗筛结果）
-- 决策记录格式：参见 `CLAUDE.md` 中「决策记录格式」
-- follow-up 格式：参见 `CLAUDE.md` 中「follow-up 格式」
-- cron 调度：`.cron/config.sh` 中的 SWEEP_DAY/SWEEP_TIME 配置
+- 备份：`.cron/scripts/snapshot-backup.sh`（每日快照 + 恢复）
+- 推送：`.cron/scripts/wechat-push.sh`（微信推送 wrapper）
+- V1 扫描维度：保留 A-M 全部维度，本文件描述如何将它们分到两档执行
+- cron 调度：`.cron/config.sh` 中的 SWEEP_DAY/SWEEP_TIME
 
 ## 手动触发防重复
 
-手动执行完 sweep 后，**必须**追加一条 last-run 记录，避免当晚定时任务重复执行：
+手动执行完 sweep 后，**必须**追加一条 last-run 记录：
 
 ```bash
 echo "wiki-sweep=$(date +%s)  # $(date '+%Y-%m-%d %H:%M')" >> "$WIKI_ROOT/.cron/logs/last-runs.txt"
 ```
-
-## 路径约定
-
-所有路径基于 `$WIKI_ROOT`。操作前先验证 `WIKI_ROOT` 环境变量已设置。
