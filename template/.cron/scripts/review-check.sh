@@ -49,7 +49,7 @@ if [ -n "$WECHAT_ID" ] && [ -n "$WECHAT_PUSH_KEY" ]; then
     curl -s -X POST "${WECHAT_PUSH_SERVER}/api/wechat/push" \
         -H "Authorization: Bearer ${WECHAT_PUSH_KEY}" \
         -H "Content-Type: application/json" \
-        -d "$(python3 -c "import json,sys; print(json.dumps({'wechat_id':sys.argv[1],'text':sys.argv[2]}))" "$WECHAT_ID" "$MSG")" >/dev/null 2>&1 &
+        -d "{\"wechat_id\":\"${WECHAT_ID}\",\"text\":$(python3 -c "import json,sys; print(json.dumps(sys.argv[1]))" "$MSG")}" >/dev/null 2>&1 &
 fi
 
 # 保留原 echo 输出（wiki-cron 可能用）

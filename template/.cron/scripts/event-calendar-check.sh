@@ -32,7 +32,7 @@ wechat_push() {
     [ -z "$text" ] && return 1
 
     local payload
-    payload=$(python3 -c "import json,sys; print(json.dumps({'wechat_id':sys.argv[1],'text':sys.argv[2]}))" "$WECHAT_ID" "$text" 2>/dev/null) || return 1
+    payload="{\"wechat_id\":\"${WECHAT_ID}\",\"text\":$(python3 -c "import json,sys; print(json.dumps(sys.argv[1]))" "$text" 2>/dev/null)}" || return 1
 
     curl -s -X POST "${WECHAT_PUSH_SERVER}/api/wechat/push" \
         -H "Authorization: Bearer ${WECHAT_PUSH_KEY}" \

@@ -328,7 +328,7 @@ if [ -n "$WECHAT_ID" ] && [ -n "$WECHAT_PUSH_KEY" ]; then
     curl -s -X POST "${WECHAT_PUSH_SERVER}/api/wechat/push" \
         -H "Authorization: Bearer ${WECHAT_PUSH_KEY}" \
         -H "Content-Type: application/json" \
-        -d "$(python3 -c "import json,sys; print(json.dumps({'wechat_id':sys.argv[1],'text':sys.argv[2]}))" "$WECHAT_ID" "$MSG")" >/dev/null 2>&1 &
+        -d "{\"wechat_id\":\"${WECHAT_ID}\",\"text\":$(python3 -c "import json,sys; print(json.dumps(sys.argv[1]))" "$MSG")}" >/dev/null 2>&1 &
 fi
 
 # 清理 pending.md 7 天前旧记录（防止无限增长）
