@@ -46,13 +46,36 @@ if [ "$1" = "--summary" ]; then
         exit 0
     fi
 
-    MSG="待办提醒：工作 ${WORK_COUNT} 项，个人 ${PERSONAL_COUNT} 项"
-    if [ "$TRACKING_COUNT" -gt 0 ]; then
-        MSG="${MSG}，跟踪项 ${TRACKING_COUNT} 个"
-    fi
+    # 提取具体待办（前 3 条标题，去掉 cadence 等反引号标记，截断 40 字）
+    WORK_TOP3=$(awk '/^## 工作/,/^## 个人/' "$ACTIVE" | grep "^- \[ \]" | head -3 | sed 's/^- \[ \] //' | sed 's/`[^`]*`//g' | cut -c1-40)
+    PERSONAL_TOP3=$(awk '/^## 个人/,/^## 跟踪/' "$ACTIVE" | grep "^- \[ \]" | head -3 | sed 's/^- \[ \] //' | sed 's/`[^`]*`//g' | cut -c1-40)
+    # 跟踪项需关注（带 cadence 的，前 3 条）
+    TRACKING_DUE=$(awk '/^## 跟踪项/,/^## 已完成/' "$ACTIVE" | grep "cadence:" | head -3 | sed 's/`[^`]*`//g' | cut -c1-50)
 
-    echo "- [$TS] $MSG" >> "$PENDING"
-    bark_push "📚 知识库·待办" "$MSG"
+    MSG="📚 待办汇总（${TS}）
+工作 ${WORK_COUNT} 项 | 个人 ${PERSONAL_COUNT} 项 | 跟踪 ${TRACKING_COUNT} 个"
+    [ -n "$WORK_TOP3" ] && MSG="${MSG}
+
+【工作 Top3】
+${WORK_TOP3}"
+    [ -n "$PERSONAL_TOP3" ] && MSG="${MSG}
+
+【个人 Top3】
+${PERSONAL_TOP3}"
+    [ -n "$TRACKING_DUE" ] && MSG="${MSG}
+
+【跟踪项】
+${TRACKING_DUE}"
+
+    echo "- [$TS] 待办汇总已推送（工作${WORK_COUNT}/个人${PERSONAL_COUNT}/跟踪${TRACKING_COUNT}）" >> "$PENDING"
+
+    # 微信推送（直接 curl，不用 bark）
+    if [ -n "$WECHAT_ID" ] && [ -n "$WECHAT_PUSH_KEY" ]; then
+        curl -s -X POST "${WECHAT_PUSH_SERVER}/api/wechat/push" \
+            -H "Authorization: Bearer ${WECHAT_PUSH_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "$(python3 -c "import json,sys; print(json.dumps({'wechat_id':sys.argv[1],'text':sys.argv[2]}))" "$WECHAT_ID" "$MSG")" >/dev/null 2>&1 &
+    fi
     exit 0
 fi
 
@@ -143,7 +166,7 @@ while IFS= read -r line; do
 
     if [ "$MATCH" = true ]; then
         # 防重复
-        ITEM_HASH=$(echo "$line" | md5 | cut -c1-8)
+        ITEM_HASH=$(echo "$line" | /sbin/md5 | cut -c1-8)
         ITEM_TYPE=$([ "$IS_ALARM" = true ] && echo "alarm" || echo "remind")
         REMIND_ID="${REMIND_KEY}|${ITEM_TYPE}|${ITEM_HASH}"
         if [ -f "$REMIND_LOG" ] && grep -qF "$REMIND_ID" "$REMIND_LOG" 2>/dev/null; then
