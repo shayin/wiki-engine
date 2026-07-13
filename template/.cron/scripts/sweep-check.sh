@@ -250,6 +250,7 @@ if [ -d "wiki/analysis" ]; then
     TWELVE_MONTHS_AGO=$(date -v-12m "+%Y-%m-%d" 2>/dev/null || date -d "12 months ago" "+%Y-%m-%d")
     while IFS= read -r mat; do
         [ -z "$mat" ] && continue
+        grep -q "^stale_ok:.*true" "$mat" 2>/dev/null && continue
         data_as_of=$(grep "^data_as_of:" "$mat" 2>/dev/null | awk '{print $2}' | tr -d '"')
         if [ -n "$data_as_of" ] && [[ "$data_as_of" < "$TWELVE_MONTHS_AGO" ]]; then
             title=$(head -20 "$mat" | grep "^title:" | sed 's/title: *//' || basename "$mat" .md)
@@ -268,10 +269,7 @@ if [ -d "wiki/sources" ]; then
 "
     done < <(grep -h "^tags:" wiki/sources/*.md 2>/dev/null | sed 's/tags: *\[//;s/\]//' | tr ',' '\n' | sed 's/^ *//;s/ *$//' | sort | uniq -c | sort -rn | head -30)
 
-    if [ -n "$TAG_STATS" ]; then
-        ISSUES="${ISSUES}TAG_STATS|all|标签统计|${TAG_STATS}
-"
-    fi
+    # TAG_STATS 是标签分布信息，不计入 ISSUES（不是问题）
 fi
 
 # --- 输出结果 + 微信推送具体发现 + 清 pending 旧记录 ---
