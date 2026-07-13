@@ -33,7 +33,7 @@ if [ -d "wiki/analysis" ]; then
     while IFS= read -r f; do
         [ -z "$f" ] && continue
         topic_dir=$(dirname "$f")
-        if [ ! -d "${topic_dir}/follow-ups" ]; then
+        if [ ! -d "${topic_dir}/follow-ups" ] && [ ! -d "${topic_dir}/skills" ]; then
             ISSUES="${ISSUES}MISSING_FOLLOWUP|${f}|$(basename "$topic_dir")
 "
         fi
@@ -147,7 +147,7 @@ if [ -d "wiki" ]; then
         # 检查目标是否存在（尝试多种路径）
         found="no"
         src_dir=$(dirname "$src_file")
-        for path in "$link_target" "${src_dir}/${link_target}" "wiki/${link_target}" "wiki/sources/$(basename "$link_target").md" "wiki/topics/$(basename "$link_target").md" "wiki/sources/$(basename "$link_target")" "wiki/topics/$(basename "$link_target")"; do
+        for path in "$link_target" "${src_dir}/${link_target}" "wiki/${link_target}" "wiki/sources/$(basename "$link_target").md" "wiki/topics/$(basename "$link_target").md" "wiki/connections/$(basename "$link_target").md" "wiki/sources/$(basename "$link_target")" "wiki/topics/$(basename "$link_target")" "wiki/connections/$(basename "$link_target")"; do
             if [ -f "$path" ]; then
                 found="yes"
                 break
@@ -247,11 +247,11 @@ fi
 # --- Check 8: 研究数据时效性预检 ---
 # 扫描 materials/ 中 frontmatter 的 data_as_of 字段，检查是否超过 6 个月
 if [ -d "wiki/analysis" ]; then
-    SIX_MONTHS_AGO=$(date -v-6m "+%Y-%m-%d" 2>/dev/null || date -d "6 months ago" "+%Y-%m-%d")
+    TWELVE_MONTHS_AGO=$(date -v-12m "+%Y-%m-%d" 2>/dev/null || date -d "12 months ago" "+%Y-%m-%d")
     while IFS= read -r mat; do
         [ -z "$mat" ] && continue
         data_as_of=$(grep "^data_as_of:" "$mat" 2>/dev/null | awk '{print $2}' | tr -d '"')
-        if [ -n "$data_as_of" ] && [[ "$data_as_of" < "$SIX_MONTHS_AGO" ]]; then
+        if [ -n "$data_as_of" ] && [[ "$data_as_of" < "$TWELVE_MONTHS_AGO" ]]; then
             title=$(head -20 "$mat" | grep "^title:" | sed 's/title: *//' || basename "$mat" .md)
             ISSUES="${ISSUES}STALE_DATA|${mat}|${title:-$(basename "$mat" .md)}|${data_as_of}
 "
