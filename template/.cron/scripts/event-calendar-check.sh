@@ -8,6 +8,9 @@
 #
 set -e
 
+# macOS 无 GNU timeout，用 perl alarm 兜底（系统已有 timeout 时走系统）
+command -v timeout >/dev/null 2>&1 || timeout() { perl -e 'alarm shift @ARGV; exec @ARGV' "$@"; }
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CRON_DIR="$(dirname "$SCRIPT_DIR")"
 WIKI_DIR="$(dirname "$CRON_DIR")"
@@ -122,7 +125,7 @@ tracker 上下文：用户持仓见 ${WIKI_DIR}/context/finance.md（只读）�
     echo "[$TS] 检测到变化（今日 ${TODAY_COUNT}/逾期 ${OVERDUE_COUNT}），调用 AI 分析..." >> "$LOG"
 
     AI_OUTPUT=$(source ~/.claude/providers/zhipu-glm.sh 2>/dev/null && \
-        timeout 300 claude -p "$AI_PROMPT" \
+        timeout 600 claude -p "$AI_PROMPT" \
             --allowedTools "Read,Edit,WebSearch,Grep,Glob" \
             --dangerously-skip-permissions < /dev/null 2>&1 || echo "AI 分析失败（超时或错误），请手动查看 tracker")
 
