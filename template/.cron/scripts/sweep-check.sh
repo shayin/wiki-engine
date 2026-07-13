@@ -48,7 +48,7 @@ if [ -d "wiki/analysis" ]; then
         item_status=$(grep "^status:" "$f" 2>/dev/null | awk '{print $2}')
         if [ "$item_status" = "active" ]; then
             # 从 tracking_records 中取最后日期
-            last_date=$(grep -E "^- 20[0-9]{2}-" "$f" 2>/dev/null | tail -1 | grep -oE "20[0-9]{2}-[0-9]{2}-[0-9]{2}" || true)
+            last_date=$(grep -E "^- (\*\*)?20[0-9]{2}-" "$f" 2>/dev/null | tail -1 | grep -oE "20[0-9]{2}-[0-9]{2}-[0-9]{2}" || true)
             if [ -n "$last_date" ] && [[ "$last_date" < "$THIRTY_DAYS_AGO" ]]; then
                 ISSUES="${ISSUES}STALE_FOLLOWUP|${f}|$(basename "$f" .md)|${last_date}
 "
