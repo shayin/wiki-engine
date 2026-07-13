@@ -120,12 +120,14 @@ ${TRACKER_LIST}
    - 结论一句话
 专业名词首次出现加简短解释（用户非金融专业，如 MPV/forward PE/margin 等）。直接输出推送正文，不要前言。
 
-tracker 上下文：用户持仓见 ${WIKI_DIR}/context/finance.md（只读）。"
+tracker 上下文：用户持仓见 ${WIKI_DIR}/context/finance.md（只读）。
+
+重要：如果 WebSearch 搜不到事件结果（数据未发布/事件未发生），明确输出"⏳ 该事件数据未发布（预计 X 月 X 日发布），待发布后自动分析"，不要反复搜索或编造数据，快速完成。"
 
     echo "[$TS] 检测到变化（今日 ${TODAY_COUNT}/逾期 ${OVERDUE_COUNT}），调用 AI 分析..." >> "$LOG"
 
     AI_OUTPUT=$(source ~/.claude/providers/zhipu-glm.sh 2>/dev/null && \
-        timeout 600 claude -p "$AI_PROMPT" \
+        timeout 180 claude -p "$AI_PROMPT" \
             --allowedTools "Read,Edit,WebSearch,Grep,Glob" \
             --dangerously-skip-permissions < /dev/null 2>&1 || echo "AI 分析失败（超时或错误），请手动查看 tracker")
 
