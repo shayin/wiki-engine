@@ -12,6 +12,10 @@
 
 set -e
 
+# 强制 UTF-8 locale，避免 cut -c 在 POSIX locale 下按字节切劈中文（乱码根因）
+export LANG="${LANG:-en_US.UTF-8}"
+export LC_ALL="${LC_ALL:-en_US.UTF-8}"
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CRON_DIR="$(dirname "$SCRIPT_DIR")"
 WIKI_DIR="$(dirname "$CRON_DIR")"
@@ -34,13 +38,20 @@ fi
 : "${REVIEW_TIME:=23:15}"
 : "${TODO_TIMES:=11:00,23:00}"
 
-# 防并发：如果上一次 check 还在跑（<10 分钟），跳过
-if [ -f "$LOCK_FILE" ]; then
-    lock_age=$(( $(date "+%s") - $(stat -f "%m" "$LOCK_FILE" 2>/dev/null || echo "0") ))
-    [ "$lock_age" -lt 600 ] && exit 0
+# 防并发：用 mkdir 作为原子锁（替代 test-then-touch 的 TOCTOU 竞态）
+# mkdir 在文件系统层是原子操作，两个并发实例只有一个能成功
+if ! mkdir "$LOCK_FILE" 2>/dev/null; then
+    # 锁已存在，检查是否过期（>10 分钟视为僵尸锁）
+    # stat 失败时视为"未知状态"，强制接管（旧代码 echo "0" 导致 lock_age 巨大锁失效）
+    lock_mtime=$(stat -f "%m" "$LOCK_FILE" 2>/dev/null || echo "")
+    if [ -n "$lock_mtime" ] && [ $(( $(date "+%s") - lock_mtime )) -lt 600 ]; then
+        exit 0
+    fi
+    # 锁过期或 stat 失败，强制接管
+    rmdir "$LOCK_FILE" 2>/dev/null || rm -rf "$LOCK_FILE"
+    mkdir "$LOCK_FILE" 2>/dev/null || exit 0
 fi
-touch "$LOCK_FILE"
-trap 'rm -f "$LOCK_FILE"' EXIT
+trap 'rmdir "$LOCK_FILE" 2>/dev/null' EXIT
 
 NOW_EPOCH=$(date "+%s")
 TODAY=$(date "+%Y-%m-%d")
@@ -180,9 +191,16 @@ if [ -n "$TODO_KEY" ]; then
     TODO_LAST=$(get_last_run "$TODO_KEY")
     [ -z "$TODO_LAST" ] && TODO_LAST=0
     if [ "$TODO_LAST" -lt "$TODO_DUE" ]; then
-        echo "[$TS] 执行待办提醒" >> "$LOG_FILE"
-        "$SCRIPT_DIR/todo-remind.sh" --summary || true
-        echo "${TODO_KEY}=$(date "+%s")  # $(date "+%Y-%m-%d %H:%M")" >> "$LAST_RUNS"
+        # 原子闸门：用 noclobber 创建当日 flag 文件，成功才推（根治竞态双推）
+        # 即便两个 cron 实例同时进入此分支，只有一个能成功创建 flag，另一个必失败 → 跳过
+        TODO_FLAG="$LOG_DIR/.${TODO_KEY}-$(date '+%Y%m%d').done"
+        if ( set -o noclobber; : > "$TODO_FLAG" ) 2>/dev/null; then
+            echo "[$TS] 执行待办提醒" >> "$LOG_FILE"
+            "$SCRIPT_DIR/todo-remind.sh" --summary || true
+            echo "${TODO_KEY}=$(date "+%s")  # $(date "+%Y-%m-%d %H:%M")" >> "$LAST_RUNS"
+        else
+            echo "[$TS] todo-remind: 今日已推送（flag 已建），跳过" >> "$LOG_FILE"
+        fi
     else
         echo "[$TS] todo-remind: 今日已提醒，跳过" >> "$LOG_FILE"
     fi

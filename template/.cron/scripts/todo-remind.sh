@@ -16,6 +16,10 @@
 #
 set -e
 
+# 强制 UTF-8 locale，避免 cut -c 在 POSIX locale 下按字节切劈中文（乱码根因）
+export LANG="${LANG:-en_US.UTF-8}"
+export LC_ALL="${LC_ALL:-en_US.UTF-8}"
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CRON_DIR="$(dirname "$SCRIPT_DIR")"
 WIKI_DIR="$(dirname "$CRON_DIR")"
