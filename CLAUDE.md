@@ -4,6 +4,22 @@
 
 用户只做三件事：**存、问、研究**。中间的整理、调研、分析，全是 AI 的事。
 
+## HTML 预览输出
+
+生成供手机或微信预览的 HTML 时，统一输出到 `/Users/shayin/data1/htdocs/project/mind/data/claude-html-share/YYYY-MM-DD/`（使用生成当天日期）。CSS、JS、图片等资源必须与页面一同放在该日期目录内并使用相对路径；不要把文件直接堆放在分享根目录，也不要将临时中间产物写入此目录。
+
+预览链接由 Claude Forward 在**微信任务结束时自动追加**：AI 只需生成文件，**不得**自行拼接链接，也不得读取、展示或写入分享令牌、服务器 Token、加密密钥等凭据。
+
+### 报告 HTML 同步规则（强制，2026-07-20 新增）
+
+**报告 markdown 的在线预览版本 = `claude-html-share/` 下的配套 HTML。HTML 不是可选附加，而是报告的"在线版"**——用户靠它在手机/微信看报告，没有 HTML 用户就拿不到最新报告。
+
+- 每次 wiki-research 产出或更新 `analysis/{课题}/report.md` 时，**必须同步生成或更新配套 HTML** 到 `data/claude-html-share/{当天日期}/`，这是报告交付的一部分，不是收尾可选项
+- 用户期望"自动收到预览链接"——机制是 Claude Forward 识别 `claude-html-share/` 下新建/修改的 HTML 并自动追加链接。**前提是 AI 必须把 HTML 生成到该目录**。所以"自动发链接"对 AI 来说 = "自动同步生成配套 HTML"，做不到只发 md 不发 HTML
+- HTML 复用 `wiki-engine/templates/equity-deep-report/report-template.html` 样式系统（明暗主题、card/verdict/kpi/risk/exp/warn/lens/pill/details.evi/sensitive 等 class），单文件自包含（CSS+JS 全内联）
+- 两份以上报告可派子代理并行生成
+- **历史教训（2026-07-20）**：更新了 BABA 报告 md（修正"Strong Sell"误判 + 升级技术面全套）却没同步配套 HTML，导致用户在线版仍是 7/19 旧错误判断。用户明确要求："html 链接就是报告 md 的在线版本，不要忘记"
+
 ## 目录结构
 
 ```
@@ -269,6 +285,219 @@ status: completed
 
 ### 子问题2
 ...
+
+### Alpha 因子扫描（决策型个股研究必填，板块/宏观研究可省略）
+
+> 数据来源：`wiki-engine/tools/quant-scanner` · `scanner factors eval --ticker XXX --horizon 5`
+> 学术标准：|IC| > 0.03 有信号 / > 0.05 有效；IR > 0.5 高质量
+
+**Top 5 Alpha**（按 |IC| 排序，截至 YYYY-MM-DD，2 年样本）：
+
+| Alpha | IC | IR | 方向 | 解读 |
+|-------|-----|-----|------|------|
+| alpha_X | ±0.0XX | ±0.XX | 多/空 | 简短解释这个公式在算什么、对当前走势的含义 |
+
+**整体判断**（一句话）：
+- 示例 A：「alpha_3/alpha_12 在 NVDA 上 IC 均 >0.05 且方向一致，量价反转结构持续有效，印证当前盘整末段的低吸信号」
+- 示例 B：「20 个 alpha 中 18 个 |IC|<0.02，当前走势无历史可类比结构，建议技术面结论降级，等新结构出现」
+
+**与技术面 Signal 的印证/背离**：
+- trend_template / vcp / can_slim 等信号的结论 vs Alpha 因子方向是否一致
+- 不一致时必须显式说明，不能直接给"买入"
+
+**多周期矩阵**（必填，找最佳持仓期）：
+
+| Alpha | IC@1d | IC@5d | IC@10d | IC@20d | IC@60d | 最佳周期 |
+|-------|-------|-------|--------|--------|--------|---------|
+| alpha_X | ±0.0XX | ±0.0XX | ±0.0XX | ±0.0XX | ±0.0XX | Xd |
+| alpha_Y | ±0.0XX | ±0.0XX | ±0.0XX | ±0.0XX | ±0.0XX | Xd |
+
+- 跨周期稳定（≥3 个周期 |IC|>0.05）= 通用因子
+- 仅某周期强 = 该周期专属因子（如 IC@1d 强 → 短线策略用）
+- 数据来源：`scanner factors matrix --ticker XXX`
+
+### 出场策略（决策型个股研究 + 已建仓标的必填）
+
+> 数据来源：`wiki-engine/tools/quant-scanner` · `ExitStrategySignal`
+> 设计依据：HANDOFF 回测显示「纯持有 60d time exit 最优 EV+4.21%/PF 2.12」，紧止损/提前退出降低 EV
+
+**当前出场信号**（截至 YYYY-MM-DD）：
+
+| 字段 | 值 | 说明 |
+|------|---|------|
+| action | HOLD / WATCH / TIGHTEN_STOP / REDUCE / EXIT | 当前建议 |
+| 入场价 | $XXX | 用户传入或最近 60 日低点占位 |
+| 当前价 | $XXX（±X.X%） | 当前收益率 |
+| 止损价 | $XXX（-X.X%） | trailing max(initial, trailing)，宽 ATR 防洗出 |
+| 目标价 | $XXX（+X.X%） | entry + 3×risk（3:1 风险比） |
+| 持仓天数 | N 天 | 超过 60 天未达 +20% 触发时间止损 |
+
+**硬触发**（必须执行）：
+- 🔴 EXIT：`exit_reasons`（跌破止损 / 时间止损）→ 清仓
+- 🟡 REDUCE：`reduce_reasons`（跌破 MA30）→ 减仓 1/3
+
+**软触发**（仅警告）：
+- ⚡ TIGHTEN_STOP（跌破 MA13）→ 建议把止损上移到 current_stop
+- ⚠️ WATCH（跌破 MA5）→ 关注，不动
+
+**关键原则**（禁止违反）：
+- 不把"紧止损"改为"立刻清仓"——违反回测最优策略
+- MA13/MA5 警告只是提醒，不主动 EXIT
+- 时间止损是核心机制：持仓 60 日未达 20% 收益 → 强制清仓（避免死钱）
+
+**与 wiki-research 步骤 4「个人建议」的衔接**：
+- 报告「个人建议」段的止损/止盈价位必须来自本节，不能凭主观给
+- 如未建仓：用最近 60 日低点作 entry 占位，输出"如果现在入场"的止损/止盈参考
+
+### 仓位管理（决策型个股研究 + 建议买入时必填）
+
+> 数据来源：`wiki-engine/tools/quant-scanner` · `position_size + ic_to_factor_weight + portfolio_risk_check`
+> 设计依据：Murphy 2% 铁律 + Alpha IC 加权（|IC|≥0.08 → ×1.5）
+
+**仓位计算**（基于账户权益 + 因子权重）：
+
+| 输入 | 值 | 来源 |
+|------|---|------|
+| 账户权益 | $XXX | 用户 context |
+| 入场价 | $XXX | ExitStrategySignal 或当前价 |
+| 止损价 | $XXX | ExitStrategySignal.initial_stop |
+| 单股风险 | $XXX | entry - stop |
+| Top Alpha IC | ±0.XX | Alpha 因子扫描 |
+| 因子权重 | 1.5/1.2/1.0/0.7 | `ic_to_factor_weight(IC)` |
+| ATR 自适应 | ×0.8/×1.0/×1.1 | ATR/price 阈值 |
+
+**输出**：
+
+| 字段 | 值 | 说明 |
+|------|---|------|
+| 建议买入 | N 股 | (账户 × 风险% × 因子权重) / 单股风险 |
+| 仓位金额 | $XXX（X.X%） | 占账户比例 |
+| 加权风险% | X.X% | 封顶 3%（即使强因子） |
+| 盈亏比 | X.X:1 | 必须 ≥ 2:1（二换一原则） |
+
+**组合级风控检查**（已建仓时）：
+
+| 检查项 | 当前 | 上限 | 状态 |
+|--------|------|------|------|
+| 总仓位 | X% | 80% | ✓/✗ |
+| 总风险 | X% | 6% | ✓/✗ |
+| 行业集中度 | X% | 40% | ✓/✗ |
+
+**关键原则**（禁止违反）：
+- 不跑 Alpha 因子扫描直接给仓位 → 禁止（缺 factor_weight 依据）
+- factor_weight 突破 1.5 → 禁止（违反 Murphy 单笔风险铁律）
+- 单笔风险超账户 3% → 禁止（即使 |IC|>0.10 强因子也封顶）
+- 盈亏比 < 2:1 → 不加仓（二换一原则）
+
+### 横截面多标的因子（候选股池/同板块对比时必填）
+
+> 数据来源：`wiki-engine/tools/quant-scanner` · `scanner factors cs-eval --tickers X,Y,Z`
+> 与单标的 IC（模式 4）互补：单标的 IC 看时序预测力，横截面 IC 看「因子能否区分不同股票」
+
+**横截面 Top Alpha**（截至 YYYY-MM-DD，N 只标的 × 2y 样本）：
+
+| Alpha | 横截面 IC | IR | 强度 | 解读 |
+|-------|----------|-----|------|------|
+| alpha_X | ±0.0XX | ±0.XX | 强/有效/弱 | 因子能否区分这批股票的相对表现 |
+
+**选股排序应用**（基于横截面 IC 强的 alpha）：
+- 按当前 alpha_X 排序 top 3：A > B > C
+- 按当前 alpha_Y 反向排序（如 IC<0）：D > E > F
+
+**与单标的 IC 的对比**：
+- 同一 alpha 在单标的 IC 强但横截面 IC 弱 = 该因子对这批股票不是「分化器」（用于择时而非选股）
+- 横截面 IC 强的 alpha 适合做选股排序公式
+- 单标的 IC 强的 alpha 适合做择时（什么时候买）
+
+**样本量提醒**：
+- 横截面 N<5 时结果不稳定
+- 建议 N≥20 只同板块标的才有 default 置信度
+- 候选股池 < 5 只时降级为参考
+
+### Regime 自适应因子（决策型研究必填，回答"当前该信哪个因子"）
+
+> 数据来源：`wiki-engine/tools/quant-scanner` · `scanner factors regime-eval --ticker XXX`
+> 当前 SPY regime（截至 YYYY-MM-DD）：bull / bear / sideways（用 close vs MA200 + MA200 斜率判定）
+
+**Regime 条件 IC 表**（同标的，分 regime 算）：
+
+| Alpha | Bull IC | Bear IC | Sideways IC | 自适应 |
+|-------|---------|---------|-------------|--------|
+| alpha_X | ±0.0XX | ±0.0XX | ±0.0XX | 牛市专属/熊市专属/震荡专属/跨 regime/通用 |
+
+**当前可用因子**（仅当 SPY regime 匹配时）：
+
+| 当前 regime | 适用的 alpha | 当前 IC | 操作建议 |
+|------------|-------------|---------|---------|
+| bull | alpha_X（牛市专属） | ±0.0XX | 该因子当前有效，技术面结论可信 |
+| bull | alpha_Y（熊市专属） | N/A | 该因子当前无效，技术面结论降级 |
+
+**关键原则**：
+- 技术面结论必须配合当前 SPY regime：因子在不同 regime 下表现不同
+- 单标的 IC（全样本平均）掩盖了 regime 差异 → 必须用 regime 分析揭示
+- 当前 SPY 在熊市 + 主要因子是牛市专属 → 技术面结论降级，等 regime 切换或改用其他因子
+
+### SHAP 特征重要性（决策型研究可选，IC 矛盾时强制）
+
+> 数据来源：`wiki-engine/tools/quant-scanner` · `scanner factors shap-eval --ticker XXX`
+> 树模型：GradientBoostingRegressor（sklearn，无系统依赖）/ XGBoost（可选）
+> 学术标准：Test R² > 0.15 泛化良好 / 0.05-0.15 偏弱 / < 0.05 无预测力
+
+**模型泛化 + Top 特征**（截至 YYYY-MM-DD）：
+
+| 字段 | 值 | 说明 |
+|------|---|------|
+| Test R² | ±0.XX | 模型在测试集的判定系数 |
+| N samples | N | 有效样本数 |
+| Top 5 SHAP | 见下表 | 多因子模型中贡献最大的 alpha |
+
+| Alpha | mean abs SHAP | 方向 | 解读 |
+|-------|--------------|------|------|
+| alpha_X | 0.0XXX | positive/negative/neutral | 在多因子模型中的边际贡献 |
+
+**关键判断**：
+- R² > 0.15：SHAP 结论可信，alpha 组合有预测力
+- R² < 0.05：**alpha 组合无预测力**，强制告知用户「当前走势无历史可类比结构」
+- 单 IC 强 + SHAP 弱 = 该 alpha 与其他 alpha 信息冗余
+- 单 IC 弱 + SHAP 强 = 该 alpha 与其他 alpha 有交互效应
+
+**与 IC（模式 4）的互补**：
+- IC 是「单 alpha 独立预测力」（线性、单因子）
+- SHAP 是「多 alpha 联合模型中各 alpha 的边际贡献」（非线性、多因子）
+- 两者一致 → 结论稳健；两者矛盾 → 揭示交互效应或信息冗余
+
+### GP 因子挖掘（决策型研究可选，Alpha101 不适用时启用）
+
+> 数据来源：`wiki-engine/tools/quant-scanner` · `scanner factors gp-mine --ticker XXX`
+> 算法：遗传规划（Koza 1992），无外部依赖（自实现 ~300 行）
+> 与 SHAP 的衔接：GP 挖出新因子 → SHAP 验证边际贡献（防止与已有 alpha 信息冗余）
+
+**新因子挖掘结果**（截至 YYYY-MM-DD）：
+
+| 字段 | 值 | 说明 |
+|------|---|------|
+| 最佳公式 | `ts_decay_linear(ts_cov(ts_min(close, w=5), min_(volume, volume), w=20), w=5)` | 序列化的基因树 |
+| IC | ±0.0XX | 与前瞻收益的 Spearman 秩相关 |
+| IR | ±0.XX | 信息比率（IC 稳定性） |
+| N samples | N | 有效样本数 |
+| 进化配置 | pop=50, gen=20 | 种群大小 / 代数 |
+
+**关键判断**：
+- |IC| > 0.08：强信号因子，建议入库（加入 alpha101.py 作新 alpha）
+- |IC| 0.05-0.08：有效，但需 SHAP 二次验证（防止与已有 alpha 冗余）
+- |IC| < 0.03：未挖出可用因子
+- 公式可解释性：必须能从金融逻辑上解读（否则视为过拟合噪声）
+- **强制规则**：GP 挖出的因子必须用 `scanner factors shap-eval` 验证在多因子模型中的边际贡献 > 0.001，才可入库
+
+**与 Alpha101（方法 2）的差异**：
+- Alpha101 = 论文现成公式（WorldQuant Kakushadze 2015），覆盖通用 alpha
+- GP = 数据驱动挖新因子，能针对单标的特性定制（如 NVDA 专属反转结构）
+- 两者互补：Alpha101 给通用基线，GP 找标的特异因子
+
+**常见坑**：
+- 小样本（N<100）IC 不可信 → 强制要求 ≥2 年日线（≥400 样本）
+- 种子敏感 → 跑 3-5 次取交集更稳健
+- 过拟合 → 必须用样本外验证（当前 mine() 全样本 IC，未来扩展为 train/test split）
 
 ## 未解决问题
 - ...
@@ -539,6 +768,36 @@ macro-tracker 的 `cadence` 字段定义更新频率。AI 必须按以下节奏�
 
 深度更新时，AI 必须在跟踪记录中追加一条更新，标注"变量 X 权重从 ★★☆ → ★★★"或"变量 Y 过期移出"等变化。
 
+## 配套工具（tools/ 目录）
+
+`wiki-engine/tools/` 下放**物理合并进来的工具**（不再是独立仓库）。每个工具有完整代码 + `wrappers/` 子目录放 wiki-engine 调用入口。
+
+### quant-scanner（美股技术面分析，2026-07-18 物理迁移自 ai-tools/）
+
+| 路径 | 角色 |
+|------|------|
+| `wiki-engine/tools/quant-scanner/` | 工具本体（src/ tests/ docs/ + 16 个 signal + 回测 + 胜率统计，2026-07-18 从 ai-tools/ 物理迁入） |
+| `wiki-engine/tools/quant-scanner/wrappers/` | 调用入口（run-scan.sh / run-stats.sh / parse-html.py），用相对路径，整体可移植 |
+| `wiki-engine/skills/wiki-quant/SKILL.md` | skill 协议（三种调用模式：快速扫描/胜率验证/批量选股） |
+| `wiki-engine/skills/wiki-quant-distill/SKILL.md` | skill 协议（量化书 → signal.py 蒸馏流水线，cangjie-skill 工程化接力） |
+| `~/.claude/skills/wiki-quant/` | 全局同步副本（cf 微信端可调用） |
+| `~/.claude/skills/wiki-quant-distill/` | 全局同步副本（cf 微信端可调用） |
+
+**调用时机**：
+- wiki-research 步骤 3「看多/看空信号对比表」的**技术面栏**强制调用（决策型研究）
+- wiki-mine 挖出 ≥3 只候选股时建议批量扫描
+- 用户直接问"X 技术面怎样 / X 历史胜率"
+
+**🔴 强制规则（2026-08-03 新增）—— RSI/ADX 趋势强度过滤**：
+
+所有技术面分析**必须先跑 `trend_regime` signal（ADX）判断趋势强度**，再决定 RSI/MACD 是否有效：
+- **ADX≥25（强趋势）**：RSI 超买/超卖是**正常强势/弱势**，不是卖/买信号。看 **MACD 柱收敛/扩张 + 顶背离** 才是真信号。
+- **ADX≤20（震荡市）**：RSI 超买/超卖**有效**（均值回归可参考）。
+- **禁止**：在 ADX≥25 强趋势中机械说"RSI 超买该减"——震荡指标在趋势中失效（Murphy 第 10 章）。
+- **历史教训（2026-08-03）**：用户质疑 RSI 超买合理性后验证，美团 ADX 29.6/BABA ADX 25.2 强趋势中 RSI 70+ 超买正常，不该机械减。`trend_regime` signal 本来就有（Wilder ADX + 道氏阶段），问题不是工具缺失而是分析时没调用。
+
+**微信端兼容**：cf 看不到 HTML，必须用 `wrappers/parse-html.py` 把 HTML 报告转 markdown 摘要后再回用户。
+
 ## 数据源
 
 研究过程中优先使用以下 MCP 工具获取数据，覆盖从实时行情到宏观指标的全链路：
@@ -741,6 +1000,21 @@ AI 必须对数据的时效性保持清醒认知。旧数据本身不是问题�
 | 宏观指标 | FRED / 央行官网 |
 
 搜索摘要只能作为**线索**，不能作为最终数据引用。摘要与原始源冲突时以原始源为准。
+
+### 估值数据强制 yfinance 验证（2026-07-27 新增）
+
+> 起因：SBLK 股息率 7-8%（搜索摘要 $0.50/季 ×4 年化）→ yfinance 原始源验证实际 **3.7%**（TTM $1.03，变动分红淡季 $0.05 拉低）。基于错误的 7-8% 算"总回报 22-28%"也是错的。**用户原话："涉及量化数据都要根据最新数据验证，基于错误数据分析技术面就是灾难"**。
+
+涉及 PE/EPS/分红/股息率/PB/PS 等**估值数据**，**必须先跑 yfinance `.info` + `.dividends` 验证**，再写入报告/HTML：
+
+| 数据类型 | yfinance 字段 | 注意 |
+|---------|-------------|------|
+| PE | `.info['trailingPE']` / `['forwardPE']` | 航运周期股 trailing PE 偏高正常 |
+| EPS | `.info['trailingEps']` / `['forwardEps']` | — |
+| 股息率 | `.info['dividendYield']` | **变动分红必须看 `.dividends.tail(4).sum()` 算 TTM**，不能拿最近一次 ×4 年化 |
+| PB | `.info['priceToBook']` | — |
+
+**分红特殊坑**：变动分红公司（航运/资源）淡季可能只有 $0.05，旺季 $0.50，**必须用 TTM（近 4 季度合计）**。月度分红 REITs（如 O）用 `.tail(12)` 不是 `.tail(4)`。**基于错误数据分析技术面就是灾难**——用户当场质疑打脸。
 
 ### 时效性三重检查
 
