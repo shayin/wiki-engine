@@ -69,17 +69,37 @@ mkdir -p "$TARGET"/wiki/{sources,topics,analysis}
 mkdir -p "$TARGET"/.cron/{logs,scripts}
 echo "    ✓ 目录结构创建完成"
 
-# ── 2. 复制模板文件 ──
+# ── 2. 复制模板文件（全复制 template/，不覆盖已有）──
 echo "==> 复制模板..."
 if [ -d "$SCRIPT_DIR/template" ]; then
-    # wiki 初始文件（不覆盖已有）
-    for f in wiki/index.md wiki/log.md todos/active.md; do
-        if [ -f "$SCRIPT_DIR/template/$f" ] && [ ! -f "$TARGET/$f" ]; then
+    # 全复制 template/ 到 TARGET：含各目录 README + .gitkeep + wiki 初始文件
+    # + connections/index.md + config.sh.example（不覆盖已有，保留实例自定义）
+    (cd "$SCRIPT_DIR/template" && find . -type f 2>/dev/null) | while read -r f; do
+        [ -z "$f" ] && continue
+        if [ ! -f "$TARGET/$f" ]; then
             mkdir -p "$(dirname "$TARGET/$f")"
             cp "$SCRIPT_DIR/template/$f" "$TARGET/$f"
         fi
     done
-    echo "    ✓ 模板文件"
+    echo "    ✓ 模板文件（各目录 README + .gitkeep + wiki 初始 + connections/index + config 示例）"
+fi
+
+# ── 2.5 分发报告模版（templates/）──
+# 复制引擎 templates/ 到实例，保持 wiki-engine/templates/ 结构
+# wiki-research skill 通过 WIKI_ROOT/wiki-engine/templates/ 相对路径引用 SCHEMA.md 和 report-template.html
+if [ -d "$SCRIPT_DIR/templates" ]; then
+    mkdir -p "$TARGET/wiki-engine/templates"
+    TMPL_COUNT=0
+    for tmpl_dir in "$SCRIPT_DIR/templates"/*/; do
+        [ -d "$tmpl_dir" ] || continue
+        tmpl_name=$(basename "$tmpl_dir")
+        cp -r "$tmpl_dir" "$TARGET/wiki-engine/templates/$tmpl_name"
+        TMPL_COUNT=$((TMPL_COUNT + 1))
+    done
+    if [ "$TMPL_COUNT" -gt 0 ]; then
+        echo "    ✓ 报告模版（${TMPL_COUNT} 个：$(ls "$SCRIPT_DIR/templates" | tr '\n' ' ')）"
+        echo "      → $TARGET/wiki-engine/templates/（wiki-research 自动引用）"
+    fi
 fi
 
 # ── 3. 复制脚本 ──

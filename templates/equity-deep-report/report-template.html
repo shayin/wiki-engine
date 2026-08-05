@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>{{ticker}} 深度报告 · {{date}}</title>
+<script>const _t=localStorage.getItem('theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=_t;</script>
+<style>
+:root{--bg:#f0f2f5;--card:#fff;--text:#1a1a1a;--text-soft:#888;--text-mid:#555;--border:#e8e8e8;--th-bg:#f7f7f7;--row-bd:#eee;--ind-bg:#fafafa;--kpi-bg:#f7f9fc;--up:#c62828;--down:#2e7d32;--vg-bg:linear-gradient(135deg,#e8f5e9,#c8e6c9);--vg-bd:#2e7d32;--exp-bg:#e3f2fd;--exp-tx:#0d47a1;--risk-bg:#fff3e0;--risk-tx:#bf360c;--lens-bg:#f3e5f5;--lens-tx:#6a1b9a;--ev-bg:#f7f9fc;--ev-bd:#d0d4d8;--src:#999;--foot:#aaa}
+[data-theme="dark"]{--bg:#0f1115;--card:#1a1d23;--text:#e8eaed;--text-soft:#9aa0a6;--text-mid:#bdc1c6;--border:#2a2e36;--th-bg:#22262e;--row-bd:#2a2e36;--ind-bg:#1f2329;--kpi-bg:#1f2329;--up:#ef5350;--down:#66bb6a;--vg-bg:linear-gradient(135deg,#1b3a20,#2e5a35);--vg-bd:#66bb6a;--exp-bg:#1b2a3a;--exp-tx:#90caf9;--risk-bg:#3a2a1b;--risk-tx:#ffcc80;--lens-bg:#2a1f3a;--lens-tx:#ce93d8;--ev-bg:#1f2329;--ev-bd:#3a3f47;--src:#6a6e72;--foot:#5a5e62}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;background:var(--bg);color:var(--text);line-height:1.65;padding:12px;padding-top:max(12px,env(safe-area-inset-top));padding-bottom:max(20px,env(safe-area-inset-bottom));transition:background .25s,color .25s}
+.wrap{max-width:680px;margin:0 auto}
+.tog{position:fixed;top:max(12px,env(safe-area-inset-top));right:14px;z-index:99;width:38px;height:38px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:17px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.card{background:var(--card);border-radius:14px;padding:18px 16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);transition:background .25s}
+h1{font-size:21px;margin-bottom:4px}h2{font-size:16px;color:var(--text);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--border)}h3{font-size:14px;color:var(--text-mid);margin:14px 0 6px}
+.sub{color:var(--text-soft);font-size:12px;margin-bottom:14px}
+table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0}th,td{padding:7px 6px;border-bottom:1px solid var(--row-bd);text-align:left;vertical-align:top}th{background:var(--th-bg);font-weight:600}
+.num{font-variant-numeric:tabular-nums;font-weight:600}.up{color:var(--up)}.down{color:var(--down)}
+.verdict{background:var(--vg-bg);border-left:4px solid var(--vg-bd);padding:14px;border-radius:8px;margin-bottom:10px}.op{font-size:18px;font-weight:700;color:var(--down)}
+.kpi{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0}.kpi-cell{flex:1;min-width:75px;background:var(--kpi-bg);border-radius:8px;padding:10px 5px;text-align:center}.kpi-cell .label{font-size:10px;color:var(--text-soft)}.kpi-cell .val{font-size:14px;font-weight:700;margin-top:2px}
+ul{padding-left:18px;font-size:13px}li{margin:4px 0}
+.src{font-size:11px;color:var(--src);margin-top:8px}
+.exp{background:var(--exp-bg);border-radius:8px;padding:10px;font-size:11px;color:var(--exp-tx);margin:6px 0}
+.risk{background:var(--risk-bg);border-radius:8px;padding:10px;font-size:12px;color:var(--risk-tx)}
+.lens{background:var(--lens-bg);border-radius:8px;padding:11px;font-size:12px;color:var(--lens-tx);margin:8px 0}
+.ind{background:var(--ind-bg);border-left:3px solid var(--ev-bd);padding:8px 10px;border-radius:0 6px 6px 0;margin:6px 0;font-size:12px}.ind .nm{font-weight:700}
+/* 可折叠证据组件 */
+details.evi{background:var(--ev-bg);border:1px solid var(--ev-bd);border-radius:8px;margin:8px 0;overflow:hidden}
+details.evi>summary{padding:9px 12px;font-size:12px;font-weight:600;color:var(--text-mid);cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px}
+details.evi>summary::before{content:'▶';font-size:9px;transition:transform .2s}
+details.evi[open]>summary::before{transform:rotate(90deg)}
+details.evi>summary .tag{margin-left:auto;font-size:10px;font-weight:400;color:var(--text-soft)}
+details.evi .body{padding:10px 12px;border-top:1px solid var(--ev-bd);font-size:11px;color:var(--text-soft)}
+details.evi .body table{font-size:11px;margin:4px 0}
+.ph{color:var(--text-soft);font-style:italic;font-size:12px;padding:8px;border:1px dashed var(--border);border-radius:6px;margin:6px 0}
+footer{text-align:center;color:var(--foot);font-size:11px;padding:14px}
+</style>
+</head>
+<body>
+<button class="tog" id="tog">🌙</button>
+<div class="wrap">
+
+<!-- 节1：投资论点（必填）-->
+<div class="card">
+<h2>① 投资论点（Thesis）</h2>
+<div class="ph">一句话论点：{{一句话概括核心判断}}</div>
+<h3>3 条可检验假设</h3>
+<table>
+<tr><th>假设</th><th>验证 KPI</th><th>验证期限</th><th>证伪阈值</th></tr>
+<tr><td>{{假设1}}</td><td>{{KPI}}</td><td>{{日期}}</td><td>{{什么事实推翻}}</td></tr>
+<tr><td>{{假设2}}</td><td>...</td><td>...</td><td>...</td></tr>
+<tr><td>{{假设3}}</td><td>...</td><td>...</td><td>...</td></tr>
+</table>
+<div class="exp"><b>variant view</b>（与共识分歧）：{{市场定价什么 vs 我分歧什么，分歧何时由什么事件验证}}</div>
+<details class="evi"><summary>证据账本：投资论点 <span class="tag">来源/日期/口径</span></summary><div class="body">{{论据来源链接 + 发布日期 + 数据截至 + GAAP/non-GAAP 口径 + 计算式}}</div></details>
+</div>
+
+<!-- 节2：经营预测+估值桥（必填）-->
+<div class="card">
+<h2>② 经营预测 + 估值桥</h2>
+<h3>分业务预测（FY26-FY28）</h3>
+<div class="ph">收入/毛利率/营业利润率/EPS/FCF 统一模型表</div>
+<h3>估值桥（SOTP + 可比 + 敏感性）</h3>
+<table>
+<tr><th>方法</th><th>区间</th><th>逻辑</th></tr>
+<tr><td>分业务 SOTP</td><td>{{各业务收入×利润率×倍数}}</td><td>{{每业务估值贡献}}</td></tr>
+<tr><td>可比公司</td><td>{{同业 EV/EBIT / PE / PEG}}</td><td>{{为何这组可比}}</td></tr>
+<tr><td>敏感性</td><td>{{关键变量±变动→目标价}}</td><td>{{哪些假设变动使目标价跌破现价}}</td></tr>
+</table>
+<div class="exp"><b>"为何买这个而非同业"</b>：同等风险预算下 vs {{同业A/B/C}} 的 FCF增长/估值/预期差/催化剂/下行情景对比</div>
+<details class="evi"><summary>证据账本：估值假设 <span class="tag">计算式/来源</span></summary><div class="body">{{净现金/债务、税率、公司费用处理 + 每倍数来源}}</div></details>
+</div>
+
+<!-- 节3：产业链/竞争/风险地图（必填）-->
+<div class="card">
+<h2>③ 产业链 · 竞争 · 结构性风险</h2>
+<div class="ph">收入驱动 / 客户集中度 / 市场份额 / 竞争者 / 供应链 / 监管许可风险</div>
+<details class="evi"><summary>证据账本：风险清单 <span class="tag">量化暴露</span></summary><div class="body">{{每个结构性风险的量化敞口（如Apple替代-$XB/年）}}</div></details>
+</div>
+
+<!-- 节4：基本面 实际vs预期差（必填）-->
+<div class="card">
+<h2>④ 基本面：实际 vs 预期差</h2>
+<div class="ph">最近季实际分业务 + 下季预期差推算（找 beat/miss 机会）</div>
+<details class="evi"><summary>证据账本：预期差计算 <span class="tag">EDGAR/财报</span></summary><div class="body">{{实际数据来源 + 共识预期来源 + 差值计算}}</div></details>
+</div>
+
+<!-- 节5：情绪面（必填）-->
+<div class="card">
+<h2>⑤ 情绪面</h2>
+<div class="ph">分析师共识/评级分布/内部人交易/机构回购/Reddit情绪</div>
+</div>
+
+<!-- 节6：技术面 wiki-quant（必填）-->
+<div class="card">
+<h2>⑥ 技术面（wiki-quant 扫描）</h2>
+<div class="ph">16 信号扫描结果 + 每个指标详解（是什么+当前值+判断）+ 关键价位（52周/MA/RSI/RS Rating）</div>
+<div class="src">数据源：quant-scanner（wiki-quant skill 模式1快速扫描）</div>
+</div>
+
+<!-- 节7：历史类比胜率（条件，有数据时）-->
+<div class="card">
+<h2>⑦ 历史类比胜率（条件模块）</h2>
+<div class="ph">本次下跌归因 + regime 定义 + 历史相似形态样本数/持有期/胜率/置信区间。只校准入场节奏，不替代基本面。</div>
+<div class="src">wiki-quant stats 模式（样本数≥50 才有置信，<20 标注"仅供参考"）</div>
+</div>
+
+<!-- 节8：透镜碰撞（增强）-->
+<div class="card">
+<h2>⑧ 透镜碰撞（增强层）</h2>
+<div class="ph">4-5 透镜（含≥1跨界）逐透镜判断 + 碰撞洞察。wiki-lens skill。</div>
+</div>
+
+<!-- 节9：MPV定价验证（增强，采用时必填）-->
+<div class="card">
+<h2>⑨ MPV 定价验证（增强 · 采用方法论时必填）</h2>
+<div class="ph">①逻辑成立度 ②定价充分度 ③拥挤度 → 矩阵定位（🟢真机会/🟡顺势/🔴负偏）</div>
+</div>
+
+<!-- 节10：持仓者偏差自检（必填）-->
+<div class="card">
+<h2>⑩ 持仓者偏差自检（流程约束）</h2>
+<h3>最强空头论点</h3>
+<div class="ph">{{最强看空论点 + 证据}}。若今日空仓是否仍会建仓？{{是/否+理由}}</div>
+<h3>减仓触发证据</h3>
+<div class="ph">{{什么新证据会让我减仓}}。财报后回测：反方论点是否被证实？</div>
+<div class="risk">⚠️ 已持仓者天然倾向找支持证据（确认偏误）。本节是强制制衡。</div>
+</div>
+
+<!-- 节11：催化剂冻结快照（必填）-->
+<div class="card">
+<h2>⑪ 催化剂冻结快照（事前下注）</h2>
+<table>
+<tr><th>事件</th><th>日期/窗口</th><th>市场隐含预期</th><th>我的预期</th><th>待验证KPI</th><th>动作</th></tr>
+<tr><td>{{事件1}}</td><td>{{日期}}</td><td>{{共识}}</td><td>{{我的判断}}</td><td>{{KPI}}</td><td>{{加/减/持}}</td></tr>
+</table>
+<div class="exp"><b>报告=事前快照</b>（决策时刻留底），<b>macro-tracker=演进记录</b>（后续更新）。report.md 链接 tracker 完整记录。</div>
+</div>
+
+<!-- 节12：持仓建议（有持仓时必填）-->
+<div class="card">
+<h2>⑫ 持仓建议（仓位框架）</h2>
+<div class="ph">操作方向 + 情景表（概率/条件/操作）+ 仓位上限逻辑（投资期限/最大可承受亏损/与现有持仓相关性/流动性）+ 止损（基本面证伪+估值下限+组合风险预算共同触发，非单看价格线）</div>
+</div>
+
+<!-- 节13：证据账本（必填，可折叠）-->
+<div class="card">
+<h2>⑬ 证据账本（可折叠 · 每结论配证据）</h2>
+<div class="ph">每个核心结论的可折叠证据：来源链接 + 发布日期 + 数据截至 + 口径（GAAP/non-GAAP）+ 计算式。第三方可复算。</div>
+<details class="evi"><summary>证据账本：{{结论1}} <span class="tag">{{来源}}</span></summary><div class="body">{{证据}}</div></details>
+<details class="evi"><summary>证据账本：{{结论2}} <span class="tag">{{来源}}</span></summary><div class="body">{{证据}}</div></details>
+</div>
+
+<!-- 节14：数据时效+版本（必填）-->
+<div class="card">
+<h2>⑭ 数据时效 + 模版版本</h2>
+<table>
+<tr><th>数据</th><th>截至</th><th>状态</th></tr>
+<tr><td>{{股价/财报/EDGAR}}</td><td>{{日期}}</td><td>{{✅/⚠️}}</td></tr>
+</table>
+<div class="src">template_version: 1.0 | schema_version: 1.0 | 生成：wiki-research + wiki-quant + wiki-lens</div>
+</div>
+
+<footer>{{ticker}} 深度报告 · {{date}} · 模版 v1.0（equity-deep-report）<br>个人决策参考，非投资建议</footer>
+
+</div>
+<script>const tog=document.getElementById('tog'),doc=document.documentElement;function sync(){tog.textContent=doc.dataset.theme==='dark'?'☀️':'🌙'}tog.onclick=()=>{doc.dataset.theme=doc.dataset.theme==='dark'?'light':'dark';localStorage.setItem('theme',doc.dataset.theme);sync()};sync();</script>
+</body>
+</html>
