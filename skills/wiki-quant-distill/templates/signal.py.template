@@ -1,0 +1,121 @@
+"""{{SIGNAL_NAME}} Signal — {{BOOK_NAME}}{{CHAPTER_REF}}
+
+{{SHORT_DESCRIPTION}}
+
+{{DETAILED_ALGORITHM_DESCRIPTION}}
+
+输出 SignalResult.value 映射：
+{{VALUE_MAPPING_DESCRIPTION}}
+"""
+from __future__ import annotations
+
+import logging
+from typing import Optional
+
+import numpy as np
+import pandas as pd
+
+from .base import BaseSignal, SignalResult
+
+log = logging.getLogger(__name__)
+
+
+class {{CLASS_NAME}}(BaseSignal):
+    """{{SIGNAL_DESCRIPTION_FOR_DEVELOPERS}}"""
+
+    name = "{{SIGNAL_SLUG}}"
+    threshold = {{THRESHOLD_DEFAULT}}  # >该值 passed=True
+
+    # ---------------------- 参数窗口 ----------------------
+    lookback: int = {{LOOKBACK_DEFAULT}}       # 评估窗口（日）
+    {{ADDITIONAL_PARAMS}}
+
+    def __init__(self, threshold: Optional[float] = None, **kwargs):
+        super().__init__(threshold=threshold, **kwargs)
+
+    # ---------------------- 主评估 ----------------------
+
+    def evaluate(self, ticker: str, df: pd.DataFrame) -> SignalResult:
+        """评估 {{SIGNAL_SLUG}} 信号
+
+        Args:
+            ticker: 股票代码
+            df: OHLCV 日线，要求列 open/high/low/close/volume，DatetimeIndex
+
+        Returns:
+            SignalResult（value ∈ [-1, +1]）
+        """
+        # 1. 数据完整性检查
+        if df is None or len(df) < self.lookback:
+            return self._neutral(ticker, "数据不足")
+
+        required = ["open", "high", "low", "close", "volume"]
+        missing = [c for c in required if c not in df.columns]
+        if missing:
+            return self._neutral(ticker, f"缺列 {missing}")
+
+        df = df.dropna(subset=required).tail(self.lookback)
+        if len(df) < self.lookback // 2:
+            return self._neutral(ticker, "有效数据不足")
+
+        # 2. 核心算法（TODO: 按 SKILL.md 的 E 段实现）
+        sub_scores = {}
+        try:
+            sub_scores = self._compute_subscores(df)
+        except Exception as e:
+            log.warning(f"[{ticker}] {self.name} 算法异常: {e}")
+            return self._neutral(ticker, f"算法异常: {e}")
+
+        # 3. 汇总 score → value（[-1, +1]）
+        value = self._aggregate(sub_scores)
+
+        # 4. 构造 details（人类可读字段必须中文化）
+        details = {
+            "pattern_type": "{{PATTERN_TYPE_DEFAULT}}",
+            "score_breakdown": sub_scores,
+            {{ADDITIONAL_DETAILS}}
+        }
+
+        # 5. reasons 列表
+        reasons = self._build_reasons(sub_scores)
+
+        return SignalResult(
+            ticker=ticker,
+            signal_name=self.name,
+            value=float(np.clip(value, -1.0, 1.0)),
+            passed=value >= self.threshold,
+            details=details,
+            reasons=reasons,
+        ).clamp()
+
+    # ---------------------- 子算法（按策略需要补充）----------------------
+
+    def _compute_subscores(self, df: pd.DataFrame) -> dict:
+        """计算各子维度打分。
+
+        TODO: 按 SKILL.md 的 E（Execution）段实现。
+        返回 dict[str, float|int]，每个键代表一个子维度。
+        """
+        raise NotImplementedError("按 SKILL.md E 段实现")
+
+    def _aggregate(self, sub_scores: dict) -> float:
+        """子分 → 总 value（[-1, +1]）。
+
+        TODO: 加权汇总逻辑。
+        """
+        raise NotImplementedError("按 SKILL.md L 段实现")
+
+    def _build_reasons(self, sub_scores: dict) -> list[str]:
+        """子分 → 人类可读理由列表（中文）。"""
+        return []
+
+    def _neutral(self, ticker: str, reason: str) -> SignalResult:
+        """中性返回（数据不足 / 异常时）。"""
+        return SignalResult(
+            ticker=ticker,
+            signal_name=self.name,
+            value=0.0,
+            passed=False,
+            details={"reason": reason},
+            reasons=[reason],
+        )

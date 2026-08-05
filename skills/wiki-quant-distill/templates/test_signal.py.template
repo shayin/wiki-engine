@@ -1,0 +1,147 @@
+"""{{SIGNAL_SLUG}} signal 测试
+
+强制覆盖（5 类场景）：
+1. 强信号触发（value ≥ 0.7）
+2. 弱信号触发（value 在阈值附近）
+3. 中性场景（value ≈ 0, passed=False）
+4. 数据缺失/NaN 不崩
+5. value 在 [-1, +1] 范围（clamp）
+"""
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from quant_scanner.signals.{{SIGNAL_SLUG}} import {{CLASS_NAME}}
+
+
+# ---------------------- 工具函数 ----------------------
+
+def make_synthetic_df(n: int = 250, seed: int = 42, trend: float = 0.0) -> pd.DataFrame:
+    """生成合成 OHLCV 数据。
+
+    Args:
+        n: 天数
+        seed: 随机种子
+        trend: 每日漂移（正=上涨趋势，负=下跌趋势）
+
+    Returns:
+        pd.DataFrame，列 open/high/low/close/volume，DatetimeIndex
+    """
+    rng = np.random.default_rng(seed)
+    dates = pd.date_range("2024-01-01", periods=n, freq="B")
+    # 随机游走 + 漂移
+    rets = rng.normal(trend, 0.02, n)
+    close = 100 * np.exp(np.cumsum(rets))
+    high = close * (1 + rng.uniform(0, 0.02, n))
+    low = close * (1 - rng.uniform(0, 0.02, n))
+    open_ = (high + low) / 2
+    vol = rng.integers(1_000_000, 10_000_000, n)
+    return pd.DataFrame({
+        "open": open_, "high": high, "low": low, "close": close, "volume": vol,
+    }, index=dates)
+
+
+def make_{{SIGNAL_SLUG}}_bullish_df() -> pd.DataFrame:
+    """生成强触发 {{SIGNAL_SLUG}} 的合成数据（做多场景）。
+
+    TODO: 按 SKILL.md A1（书中作者案例）段构造。
+    """
+    # 示例：构造明显上涨趋势
+    return make_synthetic_df(n=250, trend=0.005)
+
+
+def make_{{SIGNAL_SLUG}}_bearish_df() -> pd.DataFrame:
+    """生成强触发 {{SIGNAL_SLUG}} 的合成数据（做空场景）。
+
+    TODO: 按需实现，如果信号是 long-only 可删。
+    """
+    return make_synthetic_df(n=250, trend=-0.005)
+
+
+# ---------------------- 测试 ----------------------
+
+class Test{{CLASS_NAME}}:
+
+    def setup_method(self):
+        self.signal = {{CLASS_NAME}}()
+
+    def test_strong_bullish(self):
+        """强做多信号：value ≥ 0.7, passed=True"""
+        df = make_{{SIGNAL_SLUG}}_bullish_df()
+        result = self.signal.evaluate("TEST", df)
+        assert result.signal_name == "{{SIGNAL_SLUG}}"
+        assert result.value >= 0.7, f"期望 value >= 0.7，实际 {result.value}"
+        assert result.passed is True
+        assert "pattern_type" in result.details
+
+    def test_weak_signal_boundary(self):
+        """弱信号边界：value 在 threshold 附近"""
+        # TODO: 构造边界场景
+        df = make_synthetic_df(n=250, trend=0.001)
+        result = self.signal.evaluate("TEST", df)
+        assert -0.5 <= result.value <= 0.8  # 边界附近
+
+    def test_neutral_no_signal(self):
+        """中性场景：无信号 → value ≈ 0, passed=False"""
+        # 用纯噪声（无趋势）
+        df = make_synthetic_df(n=250, trend=0.0)
+        result = self.signal.evaluate("TEST", df)
+        assert abs(result.value) < 0.5
+        assert result.passed is False
+
+    def test_insufficient_data(self):
+        """数据不足：返回中性，不崩"""
+        df = make_synthetic_df(n=50)  # 远小于 lookback
+        result = self.signal.evaluate("TEST", df)
+        assert result.value == 0.0
+        assert result.passed is False
+        assert "reason" in result.details
+
+    def test_nan_columns_safe(self):
+        """列含 NaN 不崩"""
+        df = make_synthetic_df(n=250)
+        df.loc[df.index[:10], "close"] = np.nan
+        result = self.signal.evaluate("TEST", df)
+        assert result.signal_name == "{{SIGNAL_SLUG}}"
+        # 不应抛异常，value 在范围内
+        assert -1.0 <= result.value <= 1.0
+
+    def test_missing_columns_safe(self):
+        """缺少必需列不崩"""
+        df = pd.DataFrame({"close": [100, 101, 102]})  # 缺 high/low/open/volume
+        result = self.signal.evaluate("TEST", df)
+        assert result.value == 0.0
+        assert result.passed is False
+
+    def test_value_clamped(self):
+        """value 必须在 [-1, +1]"""
+        df = make_{{SIGNAL_SLUG}}_bullish_df()
+        result = self.signal.evaluate("TEST", df)
+        assert -1.0 <= result.value <= 1.0
+
+    def test_reasons_are_strings(self):
+        """reasons 是字符串列表"""
+        df = make_{{SIGNAL_SLUG}}_bullish_df()
+        result = self.signal.evaluate("TEST", df)
+        assert isinstance(result.reasons, list)
+        for r in result.reasons:
+            assert isinstance(r, str)
+
+
+# ---------------------- 参数化 ----------------------
+
+class Test{{CLASS_NAME}}Params:
+
+    def test_threshold_override(self):
+        """threshold 可通过构造函数覆盖"""
+        signal = {{CLASS_NAME}}(threshold=0.9)
+        assert signal.threshold == 0.9
+
+    def test_custom_lookback(self):
+        """lookback 可自定义"""
+        signal = {{CLASS_NAME}}(lookback=100)
+        df = make_synthetic_df(n=200, trend=0.005)
+        result = signal.evaluate("TEST", df)
+        assert result.signal_name == "{{SIGNAL_SLUG}}"
