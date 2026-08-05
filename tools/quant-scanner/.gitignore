@@ -1,0 +1,12 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+data_cache/
+reports/
+!data/watchlist.txt
+!data/sp500_cache.txt
+.env
+.DS_Store

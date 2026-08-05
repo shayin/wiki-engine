@@ -1,0 +1,14 @@
+# quant-scanner default watchlist
+# 每行一个 ticker（#开头为注释）
+TSLA
+NVDA
+AAPL
+BABA
+PDD
+TME
+QCOM
+META
+MSFT
+GOOGL
+AMZN
+NFLX
