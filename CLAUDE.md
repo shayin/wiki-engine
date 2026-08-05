@@ -4,6 +4,21 @@
 
 用户只做三件事：**存、问、研究**。中间的整理、调研、分析，全是 AI 的事。
 
+## 仓库架构与 skill 同步规则（2026-08-05）
+
+**架构**（三层）：
+- **wiki-engine**（git 仓库 `github.com/shayin/wiki-engine`）= **源**——放 skill / 工具 / 模板 / 本 CLAUDE.md。本地 `/opt/ai-wiki/wiki-engine/`
+- **ai-wiki**（`/opt/ai-wiki/`，**非 git**）= wiki-engine 实例化的项目，含 `wiki/` `inbox/` `decisions/` 等用户数据
+- **`~/.claude/skills/`** = 全局 skill 副本（cf 微信端运行时调用），同步自 `wiki-engine/skills/`
+- `/opt/ai-wiki/CLAUDE.md` 软链 → `wiki-engine/CLAUDE.md`（源）
+
+**改 skill 或 CLAUDE.md 的三同步**（强制，缺一不可）：
+1. **改源**：`wiki-engine/skills/{skill}/SKILL.md` 或 `wiki-engine/CLAUDE.md`
+2. **commit + push wiki-engine**：origin 是 SSH remote，服务器无 GitHub SSH key → **必须 HTTPS + token**：`git push https://<token>@github.com/shayin/wiki-engine.git HEAD:main`（SSH 会 `Permission denied`）
+3. **同步全局**（仅 skill 改动）：`cp wiki-engine/skills/{skill}/SKILL.md ~/.claude/skills/{skill}/SKILL.md`（cf 微信端用 `~/.claude/skills/`）
+
+> ai-wiki 本身（`wiki/` `inbox/` `decisions/` 等用户数据）非 git，不 push。只有 `wiki-engine/` 子树是 git 仓库。
+
 ## HTML 预览输出
 
 生成供手机或微信预览的 HTML 时，统一输出到 `/Users/shayin/data1/htdocs/project/mind/data/claude-html-share/YYYY-MM-DD/`（使用生成当天日期）。CSS、JS、图片等资源必须与页面一同放在该日期目录内并使用相对路径；不要把文件直接堆放在分享根目录，也不要将临时中间产物写入此目录。
