@@ -157,7 +157,7 @@ ${INBOX_TITLES}已生成知识卡片入库 sources/，原文移至 raw/。"
             curl -s -X POST "${WECHAT_PUSH_SERVER}/api/wechat/push" \
                 -H "Authorization: Bearer ${WECHAT_PUSH_KEY}" \
                 -H "Content-Type: application/json" \
-                -d "$(python3 -c "import json,sys; print(json.dumps({'wechat_id':sys.argv[1],'text':sys.argv[2]}))" "$WECHAT_ID" "$MSG")" >/dev/null 2>&1 &
+                -d "{\"wechat_id\":\"${WECHAT_ID}\",\"text\":$(python3 -c "import json,sys; print(json.dumps(sys.argv[1]))" "$MSG")}" >/dev/null 2>&1 &
         fi
     else
         echo "[$TS] digest: inbox 空，跳过" >> "$LOG_FILE"
