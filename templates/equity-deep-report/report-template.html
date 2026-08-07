@@ -99,6 +99,25 @@ footer{text-align:center;color:var(--foot);font-size:11px;padding:14px}
 <div class="src">数据源：quant-scanner（wiki-quant skill 模式1快速扫描）</div>
 </div>
 
+<!-- 节6b：多空力量板（必填，低波动/收敛时看谁占上风）-->
+<div class="card">
+<h2>⑥b 多空力量板（低波动/收敛时看谁占上风）</h2>
+<div class="ph">均线收敛/波动降低时 K 线形态看不出方向，用 8 个多空力量指标量化买卖谁强。每个判多/空，综合"谁占上风"。</div>
+<table>
+<tr><th>指标</th><th>读数</th><th>偏向</th></tr>
+<tr><td>+DI/-DI（趋势力量）</td><td>{{plus_di}} vs {{minus_di}}</td><td>{{🟢多头/🔴空头}}（力量比 {{di_ratio}}x）</td></tr>
+<tr><td>Elder Ray（价偏离MA13）</td><td>多头 {{bull_power}} / 空头 {{bear_power}}</td><td>{{🟢/🔴}}</td></tr>
+<tr><td>CMF（资金流20日）</td><td>{{cmf}}</td><td>{{🟢流入(>0.1强多)/🔴流出(<-0.1强空)}}</td></tr>
+<tr><td>高低点结构（近20 vs 前20日）</td><td>高{{hh}}/低{{ll}}</td><td>{{抬高=多/降低=空}}</td></tr>
+<tr><td>VWAP偏离</td><td>现价 vs VWAP{{vwap}}</td><td>{{上方=多/下方=空}}</td></tr>
+<tr><td>OBV斜率/MFI/A·D累计</td><td>{{obv}}/{{mfi}}/{{ad}}</td><td>{{流入/流出}}</td></tr>
+<tr><td>收阳比例/均线之上</td><td>{{up_days}}/20 / {{ma_above}}/5</td><td>{{偏向}}</td></tr>
+<tr><td>日内收盘位置（10日均）</td><td>{{close_pos}}</td><td>{{>0.5高位=多/<0.5低位=空}}</td></tr>
+</table>
+<div class="verdict">综合：多头 {{bull_count}}:{{bear_count}} 空头 → <b>{{多头明显占上风/胶着/空头占上风}}（{{bull_bear_ratio}}）</b></div>
+<div class="src">数据源：quant-scanner 多空力量板（wiki-quant skill 模式14）</div>
+</div>
+
 <!-- 节7：历史类比胜率（条件，有数据时）-->
 <div class="card">
 <h2>⑦ 历史类比胜率（条件模块）</h2>

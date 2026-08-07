@@ -903,6 +903,67 @@ NVDA AfML 闭环验证（primary=alpha_42, GBM+top10, 5-fold Purged CV）：
   - 建议仓位 = 模式 6 base 仓位 × 0.78（缩仓 22%）
 ```
 
+### 模式 14：多空力量板（低波动/收敛时衡量买卖谁强）
+
+**场景**：
+- 均线收敛/波动降低/变盘临界时，K 线形态看不出方向（用户原话"K 线看不出，因为波动很低了"）
+- 用户问"现在谁占上风 / 多头空头哪边强"
+- wiki-research 技术面必跑（补充形态信号在低波动时失效的缺口）
+
+**核心**：8 个多空力量指标量化买卖力量对比，每个判多/空，综合"谁占上风"。形态信号（模式1）在低波动/收敛时失效，本模式用量化指标补充。
+
+**执行**：
+```bash
+cd wiki-engine/tools/quant-scanner
+.venv/bin/python -c "
+import pandas as pd, numpy as np
+from quant_scanner.data.loader import DataLoader
+df = DataLoader().load('TICKER', period='1y', interval='1d')
+c,h,l,o,v = df['close'],df['high'],df['low'],df['open'],df['volume']
+# 1. +DI/-DI (Wilder)
+pdm=h.diff(); mdm=-l.diff(); pdm[pdm<0]=0; mdm[mdm<0]=0; pdm[pdm<mdm]=0; mdm[mdm<pdm]=0
+tr=pd.concat([h-l,(h-c.shift()).abs(),(l-c.shift()).abs()],axis=1).max(axis=1)
+atr=tr.ewm(alpha=1/14,adjust=False).mean()
+pdi=100*(pdm.ewm(alpha=1/14,adjust=False).mean()/atr); mdi=100*(mdm.ewm(alpha=1/14,adjust=False).mean()/atr)
+print(f'+DI {pdi.iloc[-1]:.1f} vs -DI {mdi.iloc[-1]:.1f} → 多头力量{pdi.iloc[-1]/mdi.iloc[-1]:.1f}x' if pdi.iloc[-1]>mdi.iloc[-1] else f'空头力量{mdi.iloc[-1]/pdi.iloc[-1]:.1f}x')
+# 2. Elder Ray (MA13)
+ma13=c.rolling(13).mean(); print(f'Elder Ray: 多头{(h-ma13).iloc[-1]:+.2f}/空头{(ma13-l).iloc[-1]:+.2f}')
+# 3. CMF (20日)
+mfv=((c-l)-(h-c))/(h-l)*v; mfv=mfv.replace([np.inf,-np.inf],0)
+print(f'CMF20: {(mfv.rolling(20).sum()/v.rolling(20).sum()).iloc[-1]:+.3f}')
+# 4. 高低点结构
+r20=df.tail(20); p20=df.iloc[-40:-20]
+print(f'高低点: 近{r20.high.max():.1f}/{r20.low.min():.1f} vs 前{p20.high.max():.1f}/{p20.low.min():.1f}')
+# 5. VWAP / 6. OBV斜率 / 7. 收阳比例 / 8. 日内收盘位置
+print(f'VWAP20: {(c*v).rolling(20).sum()/v.rolling(20).sum():.2f}, 现价{c.iloc[-1]:.2f}')
+obv=(np.sign(c.diff())*v).cumsum(); print(f'OBV斜率: {(obv.iloc[-1]-obv.iloc[-20])/20:+,.0f}')
+print(f'收阳: {(c>o).tail(20).sum()}/20, 均线上: {sum(1 for m in [c.rolling(n).mean().iloc[-1] for n in [10,20,50,200,250]] if c.iloc[-1]>m and not np.isnan(m))}/5')
+print(f'日内收盘位置: {((c-l)/(h-l)).tail(10).mean():.2f}')
+"
+```
+
+**8 指标速查**：
+| # | 指标 | 多头信号 | 空头信号 |
+|---|------|---------|---------|
+| 1 | +DI/-DI（趋势力量）| +DI > -DI（比值=力量倍数）| -DI > +DI |
+| 2 | Elder Ray（价偏离MA13）| 多头力量>空头（价在MA13上）| 空头>多头 |
+| 3 | CMF（资金流20日）| >+0.1 强资金流入 | <-0.1 强流出 |
+| 4 | 高低点结构 | 高低点抬高（higher high/low）| 降低 |
+| 5 | VWAP偏离 | 现价>VWAP（多头主导）| <VWAP |
+| 6 | OBV斜率/MFI/A·D | OBV流入/MFI>50/A·D正 | 流出/MFI<50/负 |
+| 7 | 收阳比例/均线之上 | >10阳/多均线上 | <10阳/均线下 |
+| 8 | 日内收盘位置 | >0.5（高位收盘）| <0.5 |
+
+**AI 处理**：
+1. 数 8 指标中偏多 vs 偏空的数量
+2. 综合"谁占上风"：如 7 偏多 1 偏空 = "多头明显占上风（65:35）"
+3. **注意矛盾指标**（如 OBV 流入但 A·D 派发）——标注并解释（A·D 累计可能反映历史，近期 OBV 斜率更敏感）
+4. 多空力量占优 ≠ 必涨——需配合形态（模式1）+ 阻力位（如卡 MA250 未破=力量占优但差临门一脚）
+
+**与模式1（形态）的互补**：形态信号（trend_template/VCP）在低波动/均线收敛时失效（看不出方向）；多空力量板用量化指标（+DI/CMF/资金流）在此时仍能判断买卖谁强。
+
+**历史教训（2026-08-06 美团）**：均线收敛+波动降低时，K 线/形态看不出方向，用户问"谁占上风"。跑多空力量板发现 8 指标 7 偏多（+DI 2x、CMF+0.16 强流入、高低点抬高），修正了"55:45 胶着"的形态判断为"65:35 多头占优"。
+
 ## 微信端兼容规则
 
 **关键**：cf 微信端看不到 HTML，所有输出必须转 markdown。
