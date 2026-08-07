@@ -1139,6 +1139,21 @@ context: analysis/{课题名}
 | **11 跟进项** | macro-tracker:变量地图+分层(短期/长期)+事件日历+确认规则 | 强制创建 |
 | **12 未解决问题+参考资料** | 数据时效/可信度标注 | |
 
+### 技术面必跑命令清单（2026-08-06 强制，禁止跳节）
+
+决策型个股研究的技术面**必须跑全套**，不能只 indicators 就算完成。最低必跑集（详见 wiki-quant SKILL 各模式）：
+1. `detail {TICKER}`——**形态信号**（trend_template/VCP/杯柄/双底等 16 种），揭示趋势阶段（如 trend_template<0.875 = 非 Stage2 上升趋势，是底部反弹非趋势确认）
+2. `indicators {TICKER}`——22 指标（含 ADX 强制规则先行）
+3. `factors eval --ticker {TICKER} --horizon 5` + `factors matrix --ticker {TICKER}`——Alpha IC/IR/多周期 + `ic_to_factor_weight` 拿因子权重
+4. **出场策略**（模式5 ExitStrategySignal，已建仓必填）——action/止损/trailing/target，止损价位必须来自工具不能凭主观
+5. **仓位**（模式6 position_size + portfolio_risk_check）——Murphy 2% + 组合风控（行业集中度≤40%）
+6. `factors regime-eval --ticker {TICKER}`——Regime 自适应（港股可能 N/A，诚实标局限不跳过）
+
+**禁止**：只跑 indicators + factors eval 就算技术面完成——会漏形态（趋势阶段）/出场/仓位/regime，= 模板填空式敷衍（2026-08-06 美团教训）。
+
+### 变量分层对齐走势（2026-08-06 强制）
+报告「主导变量」节必须区分「当前走势驱动」（1-4周，实际驱动股价的变量）vs「长期结构」（季度-年）。**主导变量必须和当前股价走势方向一致**——走势 +36% 反弹时主导不能是"失血"（失血是长期背景，已在低点定价）。**走势与基本面脱节 = 归因错误，必须修正**。
+
 ### 技术面时效/准确性强制（2026-08-05 教训）
 跑完 wiki-quant 后**必须**：
 1. **标截至日期**：每个指标标"截至 YYYY-MM-DD"
