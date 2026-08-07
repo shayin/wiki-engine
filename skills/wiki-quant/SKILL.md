@@ -964,6 +964,47 @@ print(f'日内收盘位置: {((c-l)/(h-l)).tail(10).mean():.2f}')
 
 **历史教训（2026-08-06 美团）**：均线收敛+波动降低时，K 线/形态看不出方向，用户问"谁占上风"。跑多空力量板发现 8 指标 7 偏多（+DI 2x、CMF+0.16 强流入、高低点抬高），修正了"55:45 胶着"的形态判断为"65:35 多头占优"。
 
+### 模式 15：趋势图 HTML（K线+均线+多空力量可视化，个股分析标准配套）
+
+**场景**：
+- 用户要"图看趋势"/"K线+多空力量 HTML"
+- wiki-research 个股研究的**标准配套产出**（和 report.md + report HTML 一起生成）
+- 用户问"哪边占上风"+"用图看"
+
+**产出**：`data/claude-html-share/{当天}/{ticker}-trend-{YYYYMMDD}.html`（自包含，ECharts CDN + 数据内联）
+
+**执行**（两步：数据 JSON → HTML 模板注入，避免 heredoc f-string 引号冲突）：
+```bash
+cd wiki-engine/tools/quant-scanner
+# Step 1: 算数据 → JSON（K线+均线+多空力量8指标，用 % 格式化不用 f-string）
+.venv/bin/python -c "
+import json,numpy as np,pandas as pd
+from quant_scanner.data.loader import DataLoader
+df=DataLoader().load('TICKER',period='1y')  # 替换 TICKER
+c,h,l,o,v=df.close,df.high,df.low,df.open,df.volume
+for n in[10,20,50,200,250]:df['MA'+str(n)]=c.rolling(n).mean()
+r=df.tail(126)
+# ...（算均线+多空力量8指标，详见模式14）→ data dict
+open('/tmp/trend_data.json','w').write(json.dumps(data))
+"
+# Step 2: HTML 模板（占位符 __DATA__/__BP__/__EP__，JS 渲染 ECharts K线 + 多空力量表 + bar）
+# 模板要点：candlestick(K线) + 5均线line + markLine(MA250阻力/trailing止损/现价) + 多空力量表(JS map rows) + 多空比bar
+```
+
+**HTML 结构**：
+- 头部：{ticker} 趋势 + 多空力量板（标题 + 变盘说明）
+- K线图（ECharts）：candlestick + MA10/20/50/200/250 + markLine（MA250 阻力红虚线、trailing 止损橙虚线、现价黄点线）+ dataZoom（可缩放）
+- 多空力量板：8 指标表格（指标/读数/偏向🟢🔴，JS 动态渲染）+ 多空比 bar（绿多头%/红空头%）+ 综合结论（nb≥6 多头占上风 / 4-5 胶着 / ≤3 空头）
+
+**AI 处理**：
+1. 跑模式14（多空力量板）拿 8 指标数据
+2. 用本模式生成趋势图 HTML（K线 + 力量板一体）
+3. 输出到 claude-html-share，链接 Claude Forward 自动追加
+
+**与模式1（形态）+ 模式14（多空力量）的关系**：模式1 看形态（趋势阶段），模式14 量化多空（低波动时看谁占上风），模式15 把两者**可视化成一张 HTML**（图+板）供用户手机看。
+
+**历史**：2026-08-06 美团首次生成（meituan-trend-20260806.html），用户认可"图+力量板一起看最直观"，纳入模板。
+
 ## 微信端兼容规则
 
 **关键**：cf 微信端看不到 HTML，所有输出必须转 markdown。

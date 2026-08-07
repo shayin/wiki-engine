@@ -1139,7 +1139,15 @@ context: analysis/{课题名}
 | **11 跟进项** | macro-tracker:变量地图+分层(短期/长期)+事件日历+确认规则 | 强制创建 |
 | **12 未解决问题+参考资料** | 数据时效/可信度标注 | |
 
-### 技术面必跑命令清单（2026-08-06 强制，禁止跳节）
+### 配套产出（强制，2026-08-06 新增）：趋势图 HTML
+
+每次个股深度研究，除 report.md + report HTML 外，**必须生成趋势图 HTML**（K线+均线+多空力量可视化）：
+- 生成方式：wiki-quant skill 模式15（数据 JSON + ECharts HTML 模板）
+- 输出：`data/claude-html-share/{当天}/{ticker}-trend-{YYYYMMDD}.html`
+- 内容：K线图（5均线+MA250阻力+止损线）+ 多空力量板（8指标+多空比bar+结论）
+- 目的：用户手机/微信"图看趋势+谁占上风"，比纯数字直观
+
+
 
 决策型个股研究的技术面**必须跑全套**，不能只 indicators 就算完成。最低必跑集（详见 wiki-quant SKILL 各模式）：
 1. `detail {TICKER}`——**形态信号**（trend_template/VCP/杯柄/双底等 16 种），揭示趋势阶段（如 trend_template<0.875 = 非 Stage2 上升趋势，是底部反弹非趋势确认）
