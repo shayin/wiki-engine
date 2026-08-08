@@ -964,14 +964,14 @@ print(f'日内收盘位置: {((c-l)/(h-l)).tail(10).mean():.2f}')
 
 **历史教训（2026-08-06 美团）**：均线收敛+波动降低时，K 线/形态看不出方向，用户问"谁占上风"。跑多空力量板发现 8 指标 7 偏多（+DI 2x、CMF+0.16 强流入、高低点抬高），修正了"55:45 胶着"的形态判断为"65:35 多头占优"。
 
-### 模式 15：趋势图 HTML（K线+均线+多空力量可视化，个股分析标准配套）
+### 模式 15：趋势图（内嵌 report HTML，K线+均线+多空力量可视化，2026-08-08 改合并）
 
 **场景**：
 - 用户要"图看趋势"/"K线+多空力量 HTML"
-- wiki-research 个股研究的**标准配套产出**（和 report.md + report HTML 一起生成）
+- wiki-research 个股研究的**标准配套产出**（嵌入 report HTML，不再单独文件）
 - 用户问"哪边占上风"+"用图看"
 
-**产出**：`data/claude-html-share/{当天}/{ticker}-trend-{YYYYMMDD}.html`（自包含，ECharts CDN + 数据内联）
+**产出**：**嵌入 report HTML**（作为 `<div id="kchart">` card + ECharts setOption，复用 report-template 样式），不再单独 trend 文件。最终只输出 `data/claude-html-share/{当天}/{ticker}-deep-report-{YYYYMMDD}.html`（报告全文 + 内嵌 K 线图 + 多空板，一个标的一个 HTML）。
 
 **执行**（两步：数据 JSON → HTML 模板注入，避免 heredoc f-string 引号冲突）：
 ```bash
@@ -1003,7 +1003,7 @@ open('/tmp/trend_data.json','w').write(json.dumps(data))
 
 **与模式1（形态）+ 模式14（多空力量）的关系**：模式1 看形态（趋势阶段），模式14 量化多空（低波动时看谁占上风），模式15 把两者**可视化成一张 HTML**（图+板）供用户手机看。
 
-**历史**：2026-08-06 美团首次生成（meituan-trend-20260806.html），用户认可"图+力量板一起看最直观"，纳入模板。
+**历史**：2026-08-06 美团首次生成（meituan-trend-20260806.html），用户认可"图+力量板一起看最直观"，纳入模板。**2026-08-08 改合并**：用户反馈"非得报告和趋势分开吗"——分开多一个链接手机端体验差，改为趋势图嵌入 report HTML（一个标的一个文件）。
 
 ### 模式 16：背离检测 + 全景趋势图（价格 vs 多空力量，转折预警，2026-08-06 新增）
 

@@ -1139,13 +1139,13 @@ context: analysis/{课题名}
 | **11 跟进项** | macro-tracker:变量地图+分层(短期/长期)+事件日历+确认规则 | 强制创建 |
 | **12 未解决问题+参考资料** | 数据时效/可信度标注 | |
 
-### 配套产出（强制，2026-08-06 新增）：趋势图 HTML
+### 配套产出（强制，2026-08-08 改：趋势图嵌入报告 HTML，不再单独）
 
-每次个股深度研究，除 report.md + report HTML 外，**必须生成趋势图 HTML**（K线+均线+多空力量可视化）：
-- 生成方式：wiki-quant skill 模式15（数据 JSON + ECharts HTML 模板）
-- 输出：`data/claude-html-share/{当天}/{ticker}-trend-{YYYYMMDD}.html`
-- 内容：K线图（5均线+MA250阻力+止损线）+ 多空力量板（8指标+多空比bar+结论）
-- 目的：用户手机/微信"图看趋势+谁占上风"，比纯数字直观
+每次个股深度研究，**趋势图（K线+多空力量）嵌入 report HTML 内**（一个标的一个 HTML，不再单独 trend 文件）：
+- 生成方式：wiki-quant skill 模式15（数据 JSON + ECharts）→ 作为 report HTML 的一个 card 内嵌（`<div id="kchart">` + ECharts setOption，复用 report-template 样式）
+- 输出：仅 `data/claude-html-share/{当天}/{ticker}-deep-report-{YYYYMMDD}.html`（报告全文 + 内嵌 K 线图 + 多空板）
+- 内容：K线图（5均线+MA250阻力+止损线+多空分面积+DI）+ 多空力量板（8指标+多空比bar+结论）
+- 目的：用户手机/微信一个链接看全部（2026-08-08 改：用户反馈分开体验差，合一）
 
 
 
@@ -1158,7 +1158,7 @@ context: analysis/{课题名}
 6. `factors regime-eval --ticker {TICKER}`——Regime 自适应（港股可能 N/A，诚实标局限不跳过）
 7. **多空力量板**（模式14，2026-08-06 新增）——8 指标（+DI/-DI、CMF、Elder Ray、高低点、VWAP 等）量化买卖谁强。**均线收敛/波动低时 K 线看不出方向，必须跑多空力量板**衡量谁占上风（补充形态信号在低波动时失效）
 8. **背离检测**（模式16，2026-08-06 新增）——价格 vs 多空综合分/RSI/MACD 背离（底背离=价新低+指标抬高=见底；顶背离=价新高+指标降低=见顶）。**决策型研究必检测**，发现背离在报告 + 全景趋势图显式标注（转折预警，配合突破/量验证）
-9. **全景趋势图 HTML**（模式15-16，强制）——一个 HTML 三部分：①当前多空快照（8指标+bar）②K线+多空分趋势（两grid上下对照看背离）③图例
+9. **趋势图（内嵌 report HTML，模式15-16，强制）**——K线+多空分趋势图作为 report HTML 的一个 card 内嵌（**不再单独 trend 文件**）：①当前多空快照（8指标+bar）②K线+多空分趋势（两grid上下对照看背离）③图例
 
 **禁止**：只跑 indicators + factors eval 就算技术面完成——会漏形态/出场/仓位/regime/多空力量/背离，= 模板填空式敷衍（2026-08-06 美团教训）。
 
