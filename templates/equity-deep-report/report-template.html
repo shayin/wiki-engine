@@ -72,6 +72,23 @@ footer{text-align:center;color:var(--foot);font-size:11px;padding:14px}
 <details class="evi"><summary>证据账本：估值假设 <span class="tag">计算式/来源</span></summary><div class="body">{{净现金/债务、税率、公司费用处理 + 每倍数来源}}</div></details>
 </div>
 
+<!-- 节2b：价值中枢 + 股价三档区间（必填，SOTP × 情绪面）-->
+<div class="card">
+<h2>②b 价值中枢 + 股价区间（SOTP × 情绪面）⭐</h2>
+<div class="ph">SOTP 分部加总得内在价值区间，叠情绪面正负，输出悲观/中性/乐观三档股价 + 现价安全边际</div>
+<table>
+<tr><th>分部</th><th>估值贡献</th><th>逻辑</th></tr>
+<tr><td>{{业务A}}</td><td>{{¥/$X-Y}}</td><td>{{利润×倍数 / 净资产 / 期权}}</td></tr>
+</table>
+<table>
+<tr><th>档位</th><th>股价区间</th><th>vs 现价</th><th>触发条件</th></tr>
+<tr><td class="up">悲观</td><td>{{X-Y}}</td><td>{{-%}}</td><td>{{核心逻辑证伪}}</td></tr>
+<tr><td>中性</td><td>{{X-Y}}</td><td>{{±%}}</td><td>{{符合预期}}</td></tr>
+<tr><td class="down">乐观</td><td>{{X-Y}}</td><td>{{+%}}</td><td>{{逻辑兑现+催化}}</td></tr>
+</table>
+<div class="exp"><b>内在价值中枢</b>：{{X（中心）}}｜现价安全边际 {{%}}｜情绪面净 {{多/空/中性}}（{{正向}} vs {{负向}}）</div>
+</div>
+
 <!-- 节3：产业链/竞争/风险地图（必填）-->
 <div class="card">
 <h2>③ 产业链 · 竞争 · 结构性风险</h2>
@@ -116,6 +133,20 @@ footer{text-align:center;color:var(--foot);font-size:11px;padding:14px}
 </table>
 <div class="verdict">综合：多头 {{bull_count}}:{{bear_count}} 空头 → <b>{{多头明显占上风/胶着/空头占上风}}（{{bull_bear_ratio}}）</b></div>
 <div class="src">数据源：quant-scanner 多空力量板（wiki-quant skill 模式14）</div>
+</div>
+
+<!-- 节6c：趋势阶段定位（必填，鱼头/鱼身/鱼尾 + 剩余空间）-->
+<div class="card">
+<h2>⑥c 趋势阶段定位（鱼头/鱼身/鱼尾）⭐</h2>
+<div class="ph">当前主导走势走到哪一段：鱼头（启动/绝望反弹）/ 鱼身（主升浪，最大最稳）/ 鱼尾（末端风险升）+ 剩余空间</div>
+<table>
+<tr><th>阶段</th><th>状态</th><th>空间</th></tr>
+<tr><td>鱼头（启动段）</td><td>{{已完成/进行中}}</td><td>{{低点→X，+Y%}}</td></tr>
+<tr><td class="down"><b>鱼身（主升浪）</b></td><td>{{待启动/进行中}}</td><td>{{X→Y，+Z%（最大一块）}}</td></tr>
+<tr><td>鱼尾（末端）</td><td>{{远未到/接近}}</td><td>{{X→Y}}</td></tr>
+</table>
+<div class="verdict">当前定位：<b>{{鱼头末/鱼身中/鱼尾}}</b>｜剩余空间 {{±%}}｜{{启动/终结信号}}</div>
+<div class="exp"><b>关键</b>：trend_template {{值}} = {{Stage2 趋势确认 / 底部反弹}}。鱼身启动需 {{突破MA多少 / 基本面兑现}}；现价买 = {{顺势骑鱼身 / 赌鱼身启动}}</div>
 </div>
 
 <!-- 节7：历史类比胜率（条件，有数据时）-->
