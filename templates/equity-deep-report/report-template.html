@@ -41,6 +41,13 @@ footer{text-align:center;color:var(--foot);font-size:11px;padding:14px}
 <button class="tog" id="tog">🌙</button>
 <div class="wrap">
 
+<!-- 节1b：本次重点变化（必填，刷新模式；提升自ad-hoc"最大delta"专节）-->
+<div class="card">
+<h2>①b 本次重点变化（最大 delta）</h2>
+<div class="ph">本次刷新最大新变量/delta：是什么 + 证据链（回原始源）+ 对论点的影响（验证/推翻/修正）+ 双向影响（利好面+副作用面）</div>
+<div class="fix">{{事件 + 日期 + 来源(高可信原始源) + 影响量化}}</div>
+</div>
+
 <!-- 节1：投资论点（必填）-->
 <div class="card">
 <h2>① 投资论点（Thesis）</h2>
@@ -150,6 +157,19 @@ footer{text-align:center;color:var(--foot);font-size:11px;padding:14px}
 </table>
 <div class="verdict">当前定位：<b>{{鱼头末/鱼身中/鱼尾}}</b>｜剩余空间 {{±%}}｜{{启动/终结信号}}</div>
 <div class="exp"><b>关键</b>：trend_template {{值}} = {{Stage2 趋势确认 / 底部反弹}}。鱼身启动需 {{突破MA多少 / 基本面兑现}}；现价买 = {{顺势骑鱼身 / 赌鱼身启动}}</div>
+</div>
+
+<!-- 节6d：背离检测（必填，转折预警，当前+历史）-->
+<div class="card">
+<h2>⑥d 背离检测（转折预警）⭐</h2>
+<div class="ph">价格 vs 多空综合分/RSI/MACD 背离。底背离(价新低+指标抬高=见底)/顶背离(价新高+指标降低=见顶)。必报：当前状态 + 历史事件 + 兑现情况</div>
+<table>
+<tr><th>类型</th><th>状态</th><th>位置/时点</th><th>含义</th></tr>
+<tr><td>当前背离</td><td>{{无/底背离/顶背离}}</td><td>{{时点}}</td><td>{{转折预警 or 健康}}</td></tr>
+<tr><td>历史背离</td><td>{{底/顶}}</td><td>{{日期 价X}}</td><td>{{兑现+Y% / 失效}}</td></tr>
+<tr><td>量价背离</td><td>{{有/无}}</td><td>OBV vs A·D</td><td>{{温和警告/正常}}</td></tr>
+</table>
+<div class="exp"><b>读法</b>：背离是预警非确认，需配合突破/量验证。底背离已兑现的反弹=已完成；当前无背离=无转折信号</div>
 </div>
 
 <!-- 节7：历史类比胜率（条件，有数据时）-->
