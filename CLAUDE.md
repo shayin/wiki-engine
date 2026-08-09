@@ -42,6 +42,7 @@
 - 用户期望"自动收到预览链接"——机制是 Claude Forward 识别 `claude-html-share/` 下新建/修改的 HTML 并自动追加链接。**前提是 AI 必须把 HTML 生成到该目录**。所以"自动发链接"对 AI 来说 = "自动同步生成配套 HTML"，做不到只发 md 不发 HTML
 - HTML 复用 `wiki-engine/templates/equity-deep-report/report-template.html` 样式系统（明暗主题、card/verdict/kpi/risk/exp/warn/lens/pill/details.evi/sensitive 等 class），单文件自包含（CSS+JS 全内联）
 - 两份以上报告可派子代理并行生成
+- **🔴 报告 HTML 必须严格套模板节序列（2026-08-08 强制）**：所有个股报告用**同一份骨架**（report-template.html 的 ①~⑭ 节序列 + ②b 价值/⑥c 趋势等），**禁止即兴加 bespoke card**（如临时加"XX 专节"）。多个标的报告结构必须 **1:1 对齐，只有内容不同**。即兴 card（如"本次最大变化"）统一进标准 slot（如 ①b 本次重点变化），标题格式统一。历史教训（2026-08-08）：用户指出美团/阿里两份报告"模块模板不一样"——根因是子代理+手工收尾半自由生成，未严格实例化模板。
 - **历史教训（2026-07-20）**：更新了 BABA 报告 md（修正"Strong Sell"误判 + 升级技术面全套）却没同步配套 HTML，导致用户在线版仍是 7/19 旧错误判断。用户明确要求："html 链接就是报告 md 的在线版本，不要忘记"
 
 ## 目录结构

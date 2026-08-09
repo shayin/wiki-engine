@@ -72,21 +72,24 @@ footer{text-align:center;color:var(--foot);font-size:11px;padding:14px}
 <details class="evi"><summary>证据账本：估值假设 <span class="tag">计算式/来源</span></summary><div class="body">{{净现金/债务、税率、公司费用处理 + 每倍数来源}}</div></details>
 </div>
 
-<!-- 节2b：价值中枢 + 股价三档区间（必填，SOTP × 情绪面）-->
+<!-- 节2b：价值中枢 + 中枢趋势 + 情绪温度（必填，三层收益框架）-->
 <div class="card">
-<h2>②b 价值中枢 + 股价区间（SOTP × 情绪面）⭐</h2>
-<div class="ph">SOTP 分部加总得内在价值区间，叠情绪面正负，输出悲观/中性/乐观三档股价 + 现价安全边际</div>
+<h2>②b 价值中枢 · 趋势 · 情绪温度 ⭐</h2>
+<div class="ph">中枢(SOTP基本面) + 中枢趋势(↗↘→，防价值陷阱) + 情绪温度(现价在历史带位置) → 三档价格带(吃哪层收益)</div>
 <table>
-<tr><th>分部</th><th>估值贡献</th><th>逻辑</th></tr>
-<tr><td>{{业务A}}</td><td>{{¥/$X-Y}}</td><td>{{利润×倍数 / 净资产 / 期权}}</td></tr>
+<tr><th>项</th><th>值</th><th>说明</th></tr>
+<tr><td>价值中枢(SOTP)</td><td>{{¥/$X（中心，区间Y-Z）}}</td><td>分部加总，纯基本面</td></tr>
+<tr><td><b>中枢趋势</b></td><td>{{↗/→/↘}}</td><td>{{基本面改善→floor升 / 稳 / 恶化→floor降（价值陷阱）}}</td></tr>
+<tr><td>情绪倍数带</td><td>{{PE X~Y}}</td><td>历史恐慌倍~乐观倍 → 价格带下沿~上沿</td></tr>
+<tr><td>情绪温度</td><td>{{冷/温/热}}</td><td>现价在带子 {{%}} 位置</td></tr>
 </table>
 <table>
-<tr><th>档位</th><th>股价区间</th><th>vs 现价</th><th>触发条件</th></tr>
-<tr><td class="up">悲观</td><td>{{X-Y}}</td><td>{{-%}}</td><td>{{核心逻辑证伪}}</td></tr>
-<tr><td>中性</td><td>{{X-Y}}</td><td>{{±%}}</td><td>{{符合预期}}</td></tr>
-<tr><td class="down">乐观</td><td>{{X-Y}}</td><td>{{+%}}</td><td>{{逻辑兑现+催化}}</td></tr>
+<tr><th>档位</th><th>价格带</th><th>吃哪层收益</th><th>触发</th></tr>
+<tr><td class="up">悲观（布仓区）</td><td>{{X-Y}}</td><td>吃②价值回归 + ③情绪修复</td><td>{{核心逻辑证伪}}</td></tr>
+<tr><td>中性（持有）</td><td>{{X-Y}}</td><td>吃①盈利成长</td><td>{{符合预期}}</td></tr>
+<tr><td class="down">乐观（兑现区）</td><td>{{X-Y}}</td><td>吃③情绪溢价</td><td>{{逻辑兑现+催化}}</td></tr>
 </table>
-<div class="exp"><b>内在价值中枢</b>：{{X（中心）}}｜现价安全边际 {{%}}｜情绪面净 {{多/空/中性}}（{{正向}} vs {{负向}}）</div>
+<div class="exp"><b>三层收益</b>：①盈利成长 ②估值回归(价→中枢) ③情绪扩张(中枢×倍数)。读法：中枢↗=floor升、dips可买；↘=价值陷阱慎接。温度冷=布仓、热=兑现</div>
 </div>
 
 <!-- 节3：产业链/竞争/风险地图（必填）-->
