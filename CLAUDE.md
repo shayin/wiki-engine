@@ -14,7 +14,7 @@
 
 **改 skill 或 CLAUDE.md 的三同步**（强制，缺一不可）：
 1. **改源**：`wiki-engine/skills/{skill}/SKILL.md` 或 `wiki-engine/CLAUDE.md`
-2. **commit + push wiki-engine**：origin 是 SSH remote，服务器无 GitHub SSH key → **必须 HTTPS + token**：`git push https://<token>@github.com/shayin/wiki-engine.git HEAD:main`（SSH 会 `Permission denied`）
+2. **commit + push wiki-engine**：服务器已配 SSH deploy key（`~/.ssh/wiki_engine_deploy`，~/.ssh/config 走 `github-wiki-engine` alias，origin 已设为 `git@github-wiki-engine:shayin/wiki-engine.git`）→ **直接 `git push origin HEAD:main`**（无需 token；2026-08-11 配置，之前要 HTTPS+token 的方式已废弃）
 3. **同步全局**（仅 skill 改动）：`cp wiki-engine/skills/{skill}/SKILL.md ~/.claude/skills/{skill}/SKILL.md`（cf 微信端用 `~/.claude/skills/`）
 
 > ai-wiki 本身（`wiki/` `inbox/` `decisions/` 等用户数据）非 git，不 push。只有 `wiki-engine/` 子树是 git 仓库。
