@@ -1164,6 +1164,8 @@ context: analysis/{课题名}
 
 ### 配套产出（强制，2026-08-08 改：趋势图嵌入报告 HTML，不再单独）
 
+> **🔴 写报告前必读 `wiki-engine/templates/equity-deep-report/REPORT-CHECKLIST.md`**（2026-08-15 起强制）：①~⑭ 节序列的唯一权威，禁止凭记忆/prompt 手写序列。生成后逐节自检并交付节覆盖清单（子代理交付不齐 → 主代理打回）。
+
 每次个股深度研究，**趋势图（K线+多空力量）嵌入 report HTML 内**（一个标的一个 HTML，不再单独 trend 文件）：
 - 生成方式：wiki-quant skill 模式15（数据 JSON + ECharts）→ 作为 report HTML 的一个 card 内嵌（`<div id="kchart">` + ECharts setOption，复用 report-template 样式）
 - 输出：仅 `data/claude-html-share/{当天}/{ticker}-deep-report-{YYYYMMDD}.html`（报告全文 + 内嵌 K 线图 + 多空板）
