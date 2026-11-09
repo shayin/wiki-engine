@@ -36,11 +36,15 @@ details.evi .body{padding:10px 12px;border-top:1px solid var(--ev-bd);font-size:
 details.evi .body table{font-size:11px;margin:4px 0}
 .ph{color:var(--text-soft);font-style:italic;font-size:12px;padding:8px;border:1px dashed var(--border);border-radius:6px;margin:6px 0}
 footer{text-align:center;color:var(--foot);font-size:11px;padding:14px}
-</style>
+.toc{display:flex;flex-wrap:wrap;gap:6px 8px;font-size:12px}.toc a{color:var(--text-mid);text-decoration:none;border:1px solid var(--row-bd);border-radius:20px;padding:3px 10px;white-space:nowrap}.toc .grp{flex-basis:100%;font-weight:800;font-size:11px;color:var(--text-soft);margin:6px 0 0}.totop{position:fixed;right:14px;bottom:20px;z-index:9;background:var(--card);border:1px solid var(--row-bd);border-radius:20px;padding:7px 13px;font-size:12px;color:var(--text-mid);text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.18)}</style>
 </head>
 <body>
 <button class="tog" id="tog">🌙</button>
 <div class="wrap">
+
+<!-- 目录卡（v1.4，2026-11-09 强制）：完整版 HTML 必带——每节 h2 加 id、每个 .part 加 id，此处锚点导航；body 结束标签前放 <a class="totop" href="#toc">↑ 目录</a> 悬浮返回按钮 -->
+<div class="card" id="toc"><h2>目录</h2><div class="toc"><a href="#s0a">⓪-A 逻辑主线</a><a href="#s0b">⓪-B 综合终审</a><span class="grp">PART A · 论点与变量</span><a href="#s1">① 投资论点</a><a href="#s1b">①b 重点变化</a><a href="#s1c">①c 主导变量分层</a><span class="grp">PART B · 基本面证据</span><a href="#s2">② 估值桥</a><a href="#s2b">②b 价值中枢</a><a href="#s3">③ 产业链</a><a href="#s4">④ 预期差</a><a href="#s5">⑤ 情绪面</a><span class="grp">PART C · 技术面证据</span><a href="#s6">⑥ 技术面全套</a><a href="#s6b">⑥b 多空板</a><a href="#s6c">⑥c 趋势阶段</a><a href="#s6d">⑥d 背离检测</a><span class="grp">PART D · 交叉验证</span><a href="#s7">⑦ 历史类比</a><a href="#s8">⑧ 透镜碰撞</a><a href="#s9">⑨ MPV</a><a href="#s10">⑩ 空仓测试</a><span class="grp">PART E · 执行与审计</span><a href="#s11">⑪ 催化剂</a><a href="#s12">⑫ 持仓建议</a><a href="#s13">⑬ 证据账本</a><a href="#s14">⑭ 数据时效</a></div></div>
+
 
 <!-- 节1b：本次重点变化（必填，刷新模式；提升自ad-hoc"最大delta"专节）-->
 <div class="card">
@@ -240,5 +244,6 @@ footer{text-align:center;color:var(--foot);font-size:11px;padding:14px}
 
 </div>
 <script>const tog=document.getElementById('tog'),doc=document.documentElement;function sync(){tog.textContent=doc.dataset.theme==='dark'?'☀️':'🌙'}tog.onclick=()=>{doc.dataset.theme=doc.dataset.theme==='dark'?'light':'dark';localStorage.setItem('theme',doc.dataset.theme);sync()};sync();</script>
+<a class="totop" href="#toc">↑ 目录</a>
 </body>
 </html>
