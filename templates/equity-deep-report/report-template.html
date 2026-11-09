@@ -36,14 +36,38 @@ details.evi .body{padding:10px 12px;border-top:1px solid var(--ev-bd);font-size:
 details.evi .body table{font-size:11px;margin:4px 0}
 .ph{color:var(--text-soft);font-style:italic;font-size:12px;padding:8px;border:1px dashed var(--border);border-radius:6px;margin:6px 0}
 footer{text-align:center;color:var(--foot);font-size:11px;padding:14px}
-.toc{display:flex;flex-wrap:wrap;gap:6px 8px;font-size:12px}.toc a{color:var(--text-mid);text-decoration:none;border:1px solid var(--row-bd);border-radius:20px;padding:3px 10px;white-space:nowrap}.toc .grp{flex-basis:100%;font-weight:800;font-size:11px;color:var(--text-soft);margin:6px 0 0}.totop{position:fixed;right:14px;bottom:20px;z-index:9;background:var(--card);border:1px solid var(--row-bd);border-radius:20px;padding:7px 13px;font-size:12px;color:var(--text-mid);text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.18)}</style>
+.totop{position:fixed;right:14px;bottom:20px;z-index:9;background:var(--card);border:1px solid var(--row-bd);border-radius:20px;padding:7px 13px;font-size:12px;color:var(--text-mid);text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+/* v1.4.1 左侧目录：桌面常驻边栏，手机抽屉（2026-11-09） */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:232px;max-width:78vw;background:var(--card);border-right:1px solid var(--row-bd);transform:translateX(-102%);transition:transform .25s ease;z-index:99;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:28px;box-shadow:2px 0 12px rgba(0,0,0,.12)}
+.sidebar.open{transform:translateX(0)}
+.sb-head{display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:800;color:var(--text-mid);padding:14px 14px 10px;border-bottom:1px solid var(--row-bd);position:sticky;top:0;background:var(--card);z-index:1}
+.sbclose{font-size:22px;line-height:1;color:var(--text-soft);text-decoration:none;padding:0 4px;cursor:pointer}
+.sb-grp{font-size:10px;font-weight:800;color:var(--text-soft);padding:14px 14px 4px;letter-spacing:.4px}
+.sb-link{display:block;font-size:12.5px;color:var(--text-mid);text-decoration:none;padding:6px 14px 6px 18px;border-left:2px solid transparent;line-height:1.35}
+.sb-link.active{color:var(--up,#26a69a);border-left-color:var(--up,#26a69a);background:var(--kpi-bg);font-weight:700}
+.sbtoggle{position:fixed;left:12px;top:10px;z-index:97;background:var(--card);border:1px solid var(--row-bd);border-radius:20px;padding:6px 13px;font-size:12px;color:var(--text-mid);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.sbbg{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:98;opacity:0;pointer-events:none;transition:opacity .2s}
+.sbbg.show{opacity:1;pointer-events:auto}
+@media(min-width:1100px){.sidebar{transform:translateX(0)}.sbtoggle{display:none}.sbbg{display:none}body{padding-left:232px}}
+h2[id]{scroll-margin-top:14px}
+</style>
 </head>
 <body>
+<!-- 左侧目录（v1.4.1，2026-11-09 强制）：桌面≥1100px 常驻边栏（滚动高亮当前节），手机=☰按钮唤出抽屉（点链接跳转后自动收起）；每个节 h2 加 id、每个 .part 加 id -->
+<button class="sbtoggle" id="sbt">☰ 目录</button>
+<div class="sbbg" id="sbbg"></div>
+<nav class="sidebar" id="sidebar"><div class="sb-head">目录 <a class="sbclose" id="sbc">×</a></div>
+<a class="sb-link" href="#s0a">⓪-A 逻辑主线</a><a class="sb-link" href="#s0b">⓪-B 综合终审</a>
+<div class="sb-grp">PART A · 论点与变量</div><a class="sb-link" href="#s1">① 投资论点</a><a class="sb-link" href="#s1b">①b 重点变化</a><a class="sb-link" href="#s1c">①c 主导变量分层</a>
+<div class="sb-grp">PART B · 基本面证据</div><a class="sb-link" href="#s2">② 估值桥</a><a class="sb-link" href="#s2b">②b 价值中枢</a><a class="sb-link" href="#s3">③ 产业链</a><a class="sb-link" href="#s4">④ 预期差</a><a class="sb-link" href="#s5">⑤ 情绪面</a>
+<div class="sb-grp">PART C · 技术面证据</div><a class="sb-link" href="#s6">⑥ 技术面全套</a><a class="sb-link" href="#s6b">⑥b 多空板</a><a class="sb-link" href="#s6c">⑥c 趋势阶段</a><a class="sb-link" href="#s6d">⑥d 背离检测</a>
+<div class="sb-grp">PART D · 交叉验证</div><a class="sb-link" href="#s7">⑦ 历史类比</a><a class="sb-link" href="#s8">⑧ 透镜碰撞</a><a class="sb-link" href="#s9">⑨ MPV</a><a class="sb-link" href="#s10">⑩ 空仓测试</a>
+<div class="sb-grp">PART E · 执行与审计</div><a class="sb-link" href="#s11">⑪ 催化剂</a><a class="sb-link" href="#s12">⑫ 持仓建议</a><a class="sb-link" href="#s13">⑬ 证据账本</a><a class="sb-link" href="#s14">⑭ 数据时效</a>
+</nav>
+
 <button class="tog" id="tog">🌙</button>
 <div class="wrap">
 
-<!-- 目录卡（v1.4，2026-11-09 强制）：完整版 HTML 必带——每节 h2 加 id、每个 .part 加 id，此处锚点导航；body 结束标签前放 <a class="totop" href="#toc">↑ 目录</a> 悬浮返回按钮 -->
-<div class="card" id="toc"><h2>目录</h2><div class="toc"><a href="#s0a">⓪-A 逻辑主线</a><a href="#s0b">⓪-B 综合终审</a><span class="grp">PART A · 论点与变量</span><a href="#s1">① 投资论点</a><a href="#s1b">①b 重点变化</a><a href="#s1c">①c 主导变量分层</a><span class="grp">PART B · 基本面证据</span><a href="#s2">② 估值桥</a><a href="#s2b">②b 价值中枢</a><a href="#s3">③ 产业链</a><a href="#s4">④ 预期差</a><a href="#s5">⑤ 情绪面</a><span class="grp">PART C · 技术面证据</span><a href="#s6">⑥ 技术面全套</a><a href="#s6b">⑥b 多空板</a><a href="#s6c">⑥c 趋势阶段</a><a href="#s6d">⑥d 背离检测</a><span class="grp">PART D · 交叉验证</span><a href="#s7">⑦ 历史类比</a><a href="#s8">⑧ 透镜碰撞</a><a href="#s9">⑨ MPV</a><a href="#s10">⑩ 空仓测试</a><span class="grp">PART E · 执行与审计</span><a href="#s11">⑪ 催化剂</a><a href="#s12">⑫ 持仓建议</a><a href="#s13">⑬ 证据账本</a><a href="#s14">⑭ 数据时效</a></div></div>
 
 
 <!-- 节1b：本次重点变化（必填，刷新模式；提升自ad-hoc"最大delta"专节）-->
@@ -244,6 +268,21 @@ footer{text-align:center;color:var(--foot);font-size:11px;padding:14px}
 
 </div>
 <script>const tog=document.getElementById('tog'),doc=document.documentElement;function sync(){tog.textContent=doc.dataset.theme==='dark'?'☀️':'🌙'}tog.onclick=()=>{doc.dataset.theme=doc.dataset.theme==='dark'?'light':'dark';localStorage.setItem('theme',doc.dataset.theme);sync()};sync();</script>
-<a class="totop" href="#toc">↑ 目录</a>
+<a class="totop" id="totopBtn">↑ 目录</a>
+
+<script>
+(function(){
+var sb=document.getElementById('sidebar'),bg=document.getElementById('sbbg'),bt=document.getElementById('sbt'),tt=document.getElementById('totopBtn');
+function open(){sb.classList.add('open');bg.classList.add('show')}
+function close(){sb.classList.remove('open');bg.classList.remove('show')}
+if(bt)bt.onclick=open;var xc=document.getElementById('sbc');if(xc)xc.onclick=close;if(bg)bg.onclick=close;
+sb.querySelectorAll('.sb-link').forEach(function(a){a.addEventListener('click',close)});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')close()});
+if(tt)tt.onclick=function(e){e.preventDefault();if(innerWidth<1100){open()}else{scrollTo({top:0,behavior:'smooth'})}};
+var links=[].slice.call(sb.querySelectorAll('.sb-link')),ids=links.map(function(a){return a.getAttribute('href').slice(1)}).filter(Boolean);
+function spy(){var pos=scrollY+130,cur='';ids.forEach(function(id){var el=document.getElementById(id);if(el&&el.getBoundingClientRect().top+scrollY<=pos)cur=id});links.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+cur)})}
+addEventListener('scroll',spy,{passive:true});spy();
+})();
+</script>
 </body>
 </html>

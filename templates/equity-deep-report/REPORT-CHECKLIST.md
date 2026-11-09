@@ -32,7 +32,7 @@
 
 1. **Read 本文件**（禁止凭记忆或 prompt 转述的序列生成）
 2. markdown 报告（report.md）按本序列排列；节名可润色但**编号必须保留**
-3. HTML（report-template.html 实例化）card 顺序与本序列 1:1，五段用 `.part` 分隔标题（`<div class="part">PART A · 论点与变量</div>` 等，样式类已内置 report-template.html）；**完整版 HTML 必带锚点目录卡**（标题卡之后放 `#toc` 卡，每节 h2 加 id、每个 .part 加 id，`</body>` 前放 `<a class="totop" href="#toc">↑ 目录</a>` 悬浮返回——完整版 19+ 张卡，没目录没法定位，2026-11-09 用户要求）
+3. HTML（report-template.html 实例化）card 顺序与本序列 1:1，五段用 `.part` 分隔标题（`<div class="part">PART A · 论点与变量</div>` 等，样式类已内置 report-template.html）；**完整版 HTML 必带左侧目录**（v1.4.1，2026-11-09 用户"目录不是在左侧的吗"）：桌面 ≥1100px 常驻左侧边栏（滚动高亮当前节 scrollspy），手机=左上角 `☰ 目录` 胶囊按钮唤出抽屉（半透明遮罩、点链接跳转后自动收起、Esc/×关闭），右下角 `↑ 目录` 按钮手机开抽屉/桌面回顶部——每节 h2 加 id、每个 .part 加 id，样式与 JS 已内置模板（.sidebar/.sbtoggle/.sbbg/.sb-link）
 4. **🔴 HTML = md 的完整在线版（2026-11-09 强制）**：配套 HTML 必须收录 md 全部节（⓪-A/⓪-B + ①~⑭ 五段分组），估值桥/技术面全套/多空板/证据账本等**一节不少**——用户在手机/微信**只能看 HTML**，看不到 md。**禁止"精简版 + '证据附录见 md 全文'指针"**（⓪-A 导航层可精炼，正文 ①~⑭ 不许砍）
 
 ## 节序列（⓪-A/⓪-B + ①~⑭ 五段分组，条件节见"必填规则"列）
